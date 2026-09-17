@@ -92,6 +92,8 @@ class DockerSandbox(Sandbox):
             ``{'status': 'ok', 'content': DataFrame}``  on success, or
             ``{'status': 'error', 'content': str}``    on failure.
         """
+        from data_formulator.ecommerce.policy import deny_free_code
+        deny_free_code()
         # Use local_dir() to materialise workspace files locally
         # (no-op for local workspaces, downloads blobs for Azure).
         with workspace.local_dir() as local_path:

@@ -16,6 +16,8 @@ def create_sandbox(sandbox: str = "local") -> LocalSandbox | DockerSandbox:
     sandbox : str
         ``"local"`` (default) or ``"docker"``.
     """
+    from data_formulator.ecommerce.policy import deny_free_code
+    deny_free_code()
     if sandbox == "docker":
         return DockerSandbox()
     return LocalSandbox()

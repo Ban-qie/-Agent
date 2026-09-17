@@ -331,6 +331,8 @@ class SandboxSession:
     EXECUTION_TIMEOUT = int(os.environ.get("DF_SANDBOX_TIMEOUT", "120"))
 
     def __init__(self):
+        from data_formulator.ecommerce.policy import deny_free_code
+        deny_free_code()
         self._proc, self._conn = _worker_pool.acquire()
         self._closed = False
 
@@ -343,6 +345,8 @@ class SandboxSession:
         ``{"status": "ok", "allowed_objects": {...}}`` or
         ``{"status": "error", "error_message": "..."}``.
         """
+        from data_formulator.ecommerce.policy import deny_free_code
+        deny_free_code()
         if self._closed:
             return {"status": "error", "error_message": "Session is closed"}
         try:
@@ -520,6 +524,8 @@ class LocalSandbox(Sandbox):
             ``{'status': 'ok', 'content': DataFrame}``  on success, or
             ``{'status': 'error', 'content': str}``    on failure.
         """
+        from data_formulator.ecommerce.policy import deny_free_code
+        deny_free_code()
         with workspace.local_dir() as local_path:
             workspace_path = os.path.abspath(str(local_path))
             # Debug: list files in workspace directory before execution
@@ -575,6 +581,8 @@ class LocalSandbox(Sandbox):
     @staticmethod
     def _run_in_warm_subprocess(code, allowed_objects, workspace_path=None):
         """Send code to a warm worker from the pool, return the result."""
+        from data_formulator.ecommerce.policy import deny_free_code
+        deny_free_code()
         proc, conn = _worker_pool.acquire()
         try:
             conn.send((code, {**allowed_objects}, workspace_path))

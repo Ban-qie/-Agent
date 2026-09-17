@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   build:
+    if: github.repository == 'microsoft/data-formulator'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -48,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy]')
+    if: github.repository == 'microsoft/data-formulator' && github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy]')
     environment:
       name: pypi
       url: https://pypi.org/p/data-formulator

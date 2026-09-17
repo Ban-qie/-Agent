@@ -277,10 +277,13 @@ class AnalystAgent:
         max_iterations: int = 5,
         max_repair_attempts: int = 2,
         identity_id: str | None = None,
+        restricted_context=None,
     ):
         self.client = client
+        self.restricted_context = restricted_context
         self.workspace = workspace
-        self.registry = skill_registry or build_registry()
+        self.registry = (restricted_context.registry if restricted_context is not None
+                         else skill_registry or build_registry())
         self.agent_exploration_rules = agent_exploration_rules
         self.agent_coding_rules = agent_coding_rules
         self.language_instruction = language_instruction
@@ -425,10 +428,11 @@ class AnalystAgent:
             )
 
             if trajectory is None:
-                ns_dir = self._explore_ns_dir()
-                if ns_dir.exists():
-                    import shutil
-                    shutil.rmtree(ns_dir, ignore_errors=True)
+                if self.restricted_context is None:
+                    ns_dir = self._explore_ns_dir()
+                    if ns_dir.exists():
+                        import shutil
+                        shutil.rmtree(ns_dir, ignore_errors=True)
 
                 trajectory = self._build_initial_messages(
                     input_tables, user_question, focused_thread, other_threads,
@@ -940,6 +944,8 @@ class AnalystAgent:
         input_tables: list[dict[str, Any]],
     ) -> dict[str, Any]:
         """Run explore code in sandbox, capturing stdout."""
+        from data_formulator.ecommerce.policy import deny_free_code
+        deny_free_code()
         capture_code = (
             "import io as _io, sys as _sys, pandas as _pd\n"
             "_old_stdout = _sys.stdout\n"
@@ -1013,6 +1019,8 @@ class AnalystAgent:
         messages: list[dict] | None = None,
     ) -> dict[str, Any]:
         """Run visualize code in sandbox and assemble chart."""
+        from data_formulator.ecommerce.policy import deny_free_code
+        deny_free_code()
         from data_formulator.sandbox import create_sandbox
 
         try:
@@ -1264,6 +1272,8 @@ class AnalystAgent:
         scratch_files: list[str] | None = None,
     ) -> list[dict]:
         """Build the initial messages with 3-tier context."""
+        if self.restricted_context is not None:
+            return self.restricted_context.messages(user_question)
         table_summaries = self._build_lightweight_table_context(input_tables, primary_tables=primary_tables)
 
         focused_block = ""
@@ -1413,6 +1423,11 @@ class AnalystAgent:
 
         rlog = self._reasoning_log
 
+        if self.restricted_context is not None:
+            self._tool_loop_exit_reason = None
+            yield from self._tool_loop(messages, 3, 0, 0, 0, rlog, [], outer_iteration)
+            return
+
         from data_formulator.sandbox.local_sandbox import SandboxSession
         ns_dir = self._explore_ns_dir()
         ws_path = str(self.workspace.confined_scratch.root.parent)
@@ -1518,6 +1533,13 @@ class AnalystAgent:
             content = choice.message.content or ""
             tool_calls = getattr(choice.message, 'tool_calls', None)
             finish_reason = getattr(choice, "finish_reason", "stop")
+
+            if self.restricted_context is not None:
+                rejection = self.restricted_context.validate_calls(tool_calls)
+                if rejection:
+                    yield {"type": "agent_action", "action_data": None, "reason": "llm_error",
+                           "error_message": rejection, "llm_calls": llm_calls_in_cycle}
+                    return
 
             if tool_calls:
                 rlog.log("llm_response", iteration=outer_iteration,
@@ -1901,6 +1923,10 @@ class AnalystAgent:
         belt-and-suspenders net.
         """
         last_exc: Exception | None = None
+        if self.restricted_context is not None:
+            return self.client.get_completion_with_tools(
+                messages, tools=tools, stream=True, parallel_tool_calls=False,
+            )
         for attempt in range(self._MAX_LLM_RETRIES):
             try:
                 return self.client.get_completion_with_tools(

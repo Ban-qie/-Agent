@@ -18,6 +18,7 @@ Security Model:
 """
 
 import getpass
+import hashlib
 import logging
 import os
 import re
@@ -113,7 +114,15 @@ def init_auth(app: Flask) -> None:
         if host in ('127.0.0.1', 'localhost', '::1'):
             try:
                 username = getpass.getuser()
-                validated = _validate_identity_value(username, "os_username")
+                try:
+                    validated = _validate_identity_value(username, "os_username")
+                except ValueError:
+                    if not username.strip():
+                        raise
+                    # OS account names may contain spaces or Unicode on Windows.
+                    # Hash only this server-derived value; retain strict validation
+                    # for all client headers and provider claims.
+                    validated = "os-sha256:" + hashlib.sha256(username.encode("utf-8")).hexdigest()
                 _localhost_identity = f"local:{validated}"
                 logger.info(
                     "Auth mode: single-user localhost (identity=%s)",

@@ -21,8 +21,13 @@ pytestmark = [pytest.mark.backend]
 
 
 @pytest.fixture
-def app():
+def app(monkeypatch):
     """Minimal Flask app for request-context tests."""
+    # App-import integration tests may initialise local identity first. These
+    # unit tests exercise anonymous/provider modes independently of test order.
+    monkeypatch.setattr(auth_module, "_localhost_identity", None)
+    monkeypatch.setattr(auth_module, "_provider", None)
+    monkeypatch.setattr(auth_module, "_allow_anonymous", True)
     app = flask.Flask(__name__)
     app.config["TESTING"] = True
     return app

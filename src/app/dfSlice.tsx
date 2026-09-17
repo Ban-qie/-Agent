@@ -100,6 +100,7 @@ export interface ServerConfig {
     IDENTITY?: { type: string; id: string };
     CREDENTIAL_VAULT_ENABLED?: boolean;
     IS_LOCAL_MODE?: boolean;
+    ECOMMERCE_RESTRICTED?: boolean;
 }
 
 export interface ModelConfig {
@@ -2681,7 +2682,7 @@ export const dfSelectors = {
                 seen.add(cur.id);
                 const p: string | undefined = cur.parentNodeId;
                 if (!p) break;
-                const parentTurn = textTurns.find(tt => tt.id === p);
+                const parentTurn: TextTurn | undefined = textTurns.find(tt => tt.id === p);
                 if (parentTurn?.dataOperation || parentTurn?.form) {
                     return { type: 'text', textId: parentTurn.id };
                 }

@@ -422,3 +422,16 @@ NUL
 
 # Package manager lock files (using yarn)
 package-lock.json
+
+# Ecommerce Agent local runtime, secrets, and data (never publish).
+.local/
+.env.*
+!.env.template
+!.env.example
+data/raw/
+data/processed/
+.pytest_cache/
+
+# Private development history: keep locally; publish only the release summary.
+/docs/verification/
+/docs/V0-*.md

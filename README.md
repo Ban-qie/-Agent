@@ -1,3 +1,28 @@
+# 电商运营数据分析 Agent · V0
+
+本仓库在 Microsoft Data Formulator `0.8b1`（`5477f0e236426dc8f74a498ec400414fba7fbc0f`）基础上，实现本机单用户电商分析：三个固定指标、明确期间比较、地区分组、结果表与图表、工作区保存和重启恢复。运行时复用单 AnalystAgent，模型为 Qwen Flash；不开放任意 SQL/Python、连接器或公网访问。
+
+- [安装、数据准备、启动与已知限制](docs/ECOMMERCE_V0.md)
+- [V0 发布说明与验收摘要](docs/RELEASE_V0.md)
+- [上游来源、许可证与数据分发边界](THIRD_PARTY_NOTICES.md)
+- [受限配置说明](.env.example)（仅示例，受限启动器不自动读取 dotenv）
+
+已有验收环境直接启动，无需重新安装依赖：
+
+```powershell
+.\.venv\Scripts\python.exe -m devtools.run_ecommerce
+# 默认离线。启用已配置的服务端 Qwen 和有效费用账目：
+.\.venv\Scripts\python.exe -m devtools.run_ecommerce --qwen
+```
+
+访问 http://127.0.0.1:5567，Ctrl+C 停止。新克隆需先按运行文档准备依赖、构建和合法取得的 Olist 数据。仓库不包含原始/派生数据、用户工作区、密钥或费用账目；缺失费用账目时付费分析拒绝执行。
+
+本地回归 199 项、前端 12 项以及真实模型链路验收通过，范围和限制见发布说明。标签 `v0.1.0` 是本项目 V0 源码基线；没有发布同名上游 Python 包或桌面安装包。
+
+---
+
+以下保留上游 README。其通用安装、连接器、生成代码、云端演示和部署能力不属于本项目受限 V0 启动入口。
+
 <h1 align="center">
   <img src="./public/favicon.ico" alt="Data Formulator icon" width="28">&nbsp;
   Data Formulator: AI-powered Data Visualization

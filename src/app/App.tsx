@@ -60,6 +60,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ClearIcon from '@mui/icons-material/Clear';
 
 import { DataFormulatorFC } from '../views/DataFormulator';
+import { EcommerceWorkspace } from '../views/EcommerceWorkspace';
 import { LayoutProvider } from './LayoutProvider';
 import { MIN_SUPPORTED } from './layout';
 import { useAutoSave } from './useAutoSave';
@@ -1055,6 +1056,11 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
 };
 
 const AppShell: FC = () => {
+    const restricted = useSelector((state: DataFormulatorState) => state.serverConfig.ECOMMERCE_RESTRICTED);
+    return restricted ? <EcommerceWorkspace /> : <LegacyAppShell />;
+};
+
+const LegacyAppShell: FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { t } = useTranslation();
     const location = useLocation();

@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   build-desktop:
+    if: github.repository == 'microsoft/data-formulator'
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
@@ -102,7 +103,7 @@ jobs:
 
   attach-to-release:
     name: Attach desktop downloads to release
-    if: github.ref_type == 'tag'
+    if: github.repository == 'microsoft/data-formulator' && github.ref_type == 'tag'
     needs: build-desktop
     runs-on: ubuntu-latest
     permissions:

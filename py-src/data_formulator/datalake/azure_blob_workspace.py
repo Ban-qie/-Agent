@@ -670,6 +670,8 @@ class AzureBlobWorkspace(Workspace):
         Downloads the blob to a temporary local file for the duration of
         the query, so DuckDB can use its native parquet reader.
         """
+        from data_formulator.ecommerce.policy import deny_free_code
+        deny_free_code()
         import duckdb
         from azure.core.exceptions import ResourceNotFoundError
 

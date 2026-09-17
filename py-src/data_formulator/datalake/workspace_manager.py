@@ -14,6 +14,8 @@ Users can create, list, open, delete, and switch workspaces.
 """
 
 import json
+import os
+import tempfile
 import logging
 import shutil
 from datetime import datetime, timezone
@@ -490,10 +492,17 @@ class WorkspaceManager:
 
         clean_state = _strip_sensitive(state)
         state_file = ws_dir / SESSION_STATE_FILENAME
-        state_file.write_text(
-            json.dumps(clean_state, default=str, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        # Readers must see either the old or complete new session after a crash.
+        fd, temporary = tempfile.mkstemp(prefix="session-", suffix=".tmp", dir=ws_dir)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                json.dump(clean_state, stream, default=str, ensure_ascii=False)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, state_file)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
 
         aw = clean_state.get("activeWorkspace")
         dn = aw["displayName"] if isinstance(aw, dict) and aw.get("displayName") else workspace_id

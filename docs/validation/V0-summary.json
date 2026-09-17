@@ -1,0 +1,20 @@
+{
+  "release": "v0.1.0",
+  "date": "2026-09-17",
+  "upstream_commit": "5477f0e236426dc8f74a498ec400414fba7fbc0f",
+  "scope": "Windows single-user loopback, restricted ecommerce, local workspace",
+  "backend_passed": 199,
+  "frontend_passed": 12,
+  "typescript": "passed",
+  "production_build": "passed",
+  "real_model_scenarios": 4,
+  "clarification_scenarios": 2,
+  "independent_raw_csv_reference_equal": true,
+  "duplicate_additional_model_calls": 0,
+  "offline_restart_additional_model_calls": 0,
+  "browser_errors": 0,
+  "exact_credential_scan_matches": 0,
+  "raw_and_snapshot_hashes_unchanged": true,
+  "dependency_manifests_and_locks_unchanged": true,
+  "details": "Private evidence is retained locally; no source data, detailed results or per-call ledger are distributed."
+}

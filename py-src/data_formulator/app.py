@@ -282,6 +282,10 @@ def _register_blueprints():
     app.register_blueprint(demo_stream_bp)
     app.register_blueprint(logs_bp)
     app.register_blueprint(model_endpoints_bp)
+    from data_formulator.routes.ecommerce import ecommerce_bp
+    from data_formulator.ecommerce.policy import install_profile
+    app.register_blueprint(ecommerce_bp)
+    install_profile(app)
 
     # Initialise pluggable authentication (reads AUTH_PROVIDER env var)
     from data_formulator.auth.identity import init_auth, get_active_provider
@@ -387,6 +391,8 @@ def get_app_config():
 
     from data_formulator.auth.identity import is_local_mode
     config["IS_LOCAL_MODE"] = is_local_mode()
+    from data_formulator.ecommerce.policy import restricted_mode
+    config["ECOMMERCE_RESTRICTED"] = restricted_mode()
 
     if workspace_backend == 'local':
         from data_formulator.datalake.workspace import get_data_formulator_home

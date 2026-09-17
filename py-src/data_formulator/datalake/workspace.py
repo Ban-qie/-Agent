@@ -755,6 +755,8 @@ class Workspace:
         This gives efficient column-pruned / row-group-skipped reads on
         large parquet files without loading the full table into memory.
         """
+        from data_formulator.ecommerce.policy import deny_free_code
+        deny_free_code()
         import duckdb
 
         path = self.get_parquet_path(table_name)
