@@ -60,6 +60,10 @@ def main():
     @app.get('/<path:name>')
     def asset(name):
         return send_from_directory(dist, name)
+    serve(app, service)
+
+
+def serve(app, service):
     from werkzeug.serving import BaseWSGIServer, WSGIRequestHandler
     class QuietHandler(WSGIRequestHandler):
         def log_request(self, code='-', size='-'):
