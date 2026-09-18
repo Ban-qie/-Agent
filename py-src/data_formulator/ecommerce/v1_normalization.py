@@ -167,6 +167,12 @@ def _explicit_group(text: str) -> str | None:
 
 
 def _reject_ambiguous(text: str) -> None:
+    if any(word in re.sub(r"\s+", "", text) for word in ("销售量", "销量", "销售数量", "商品件数")):
+        raise NormalizationError(
+            "请确认“销售量”指商品件数、订单数还是销售额。当前 V1 不支持商品件数，不能用订单数或销售额代替。"
+            "若指订单数，可输入‘2018年1月按地区分组订单数最高前5’；若指金额，将‘订单数’改为‘销售额’。"
+            "请将示例年月替换为实际分析期间；或在已有分析上点击‘基于此分析继续追问’以继承期间。"
+        )
     if any(word in text.lower() for word in ("sql", "python", "执行", "删除", "上传", "利润", "广告", "库存")):
         raise NormalizationError("问题包含当前版本不支持的操作或指标，请只提供电商分析条件。")
     if any(word in text for word in ("最近", "最新", "本月", "上个月", "上月", "今年", "去年")):
@@ -236,6 +242,9 @@ def normalize_question(question: str, inherited: Mapping[str, Any] | None = None
     if explicit_regions:
         regions = sorted(set(explicit_regions))
     group_by = _explicit_group(text) or base.get("group_by")
+    # Sorting and Top N describe a grouping, not the underlying filter. A new
+    # grouping must not inherit a region ranking into a chronological trend.
+    grouping_changed = group_by != base.get("group_by")
     result: dict[str, Any] = {
         "version": 1,
         "metrics": metrics,
@@ -244,8 +253,8 @@ def normalize_question(question: str, inherited: Mapping[str, Any] | None = None
         "baseline": baseline if is_compare else None,
         "regions": regions,
         "group_by": group_by,
-        "sort": _sort(text, base.get("sort")),
-        "top_n": _top_n(text, base.get("top_n")),
+        "sort": _sort(text, None if grouping_changed else base.get("sort")),
+        "top_n": _top_n(text, None if grouping_changed else base.get("top_n")),
         "order_status": ["delivered"],
         "time_field": "purchase_at",
         "sales_basis": "item_price_excluding_freight",

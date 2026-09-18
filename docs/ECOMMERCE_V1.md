@@ -62,3 +62,5 @@ $env:ECOMMERCE_ANALYSIS_ORCHESTRATOR = 'v0'
 V1-15 已完成 264 项相关后端、15 项前端、类型检查、构建、13 个 V1 浏览器场景、9 个原始 CSV 复算场景及两项真实 V0 对照。这些属于旧确定性版本；本次模型协作新增验收见 V1_MODEL_TEAM.md。摘要见 [RELEASE_V1.md](RELEASE_V1.md) 和 [validation/V1-summary.json](validation/V1-summary.json)。
 
 已有环境需要离线回归时可运行 `python -m devtools.v1_regression` 和 `node node_modules/vitest/vitest.mjs run tests/frontend/ecommerce.test.tsx`。后端脚本使用新临时目录，不删除旧缓存。`devtools.v1_check`、`v1_reference`、`v1_verify` 是验收机工具，依赖私有历史/证据、指定位置的 Playwright Core 与 Edge，不能作为新克隆通用初始化步骤。付费 V0 对照必须显式使用 `--qwen-baseline`，不作为恢复会话的必要操作。
+
+最新模型版收尾验收：315项后端、15项前端及类型/构建通过；真实链路、复算、恢复、失败样本与对照见 [当前摘要](validation/V1-team-summary.json) 和 [任务入口](roadmap/README.md)。旧V1-summary.json仅代表确定性历史版本。qwen-flash是provider别名，并非不可变模型修订号。后续本地实现从V2-01开始；本版仍只声明Windows本机单用户范围。

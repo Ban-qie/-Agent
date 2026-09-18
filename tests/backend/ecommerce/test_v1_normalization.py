@@ -9,6 +9,19 @@ from data_formulator.ecommerce.v1_normalization import (
 )
 
 
+@pytest.mark.parametrize('metric,field', [('订单数', 'order_count'), ('销售额', 'sales_amount')])
+def test_region_top_five_requires_period_or_explicit_parent(metric, field):
+    question = f'按地区分组{metric}最高前5'
+    with pytest.raises(NormalizationError):
+        normalize_question(question)
+    standalone = normalize_question('2018年1月' + question)
+    followup = normalize_question(question, normalize_question('分析2018年1月销售额'))
+    assert standalone == followup
+    assert followup['metrics'] == [field]
+    assert followup['group_by'] == 'region' and followup['top_n'] == 5
+    assert followup['sort'] == {'field': field, 'direction': 'desc'}
+
+
 def test_comparison_normalizes_metrics_periods_sort_and_top_n():
     result = normalize_question(
         "比较2018年2月与2018年1月的商品销售金额、订单数和平均订单商品金额，按地区分组，销售金额减少最多前5"

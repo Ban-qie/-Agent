@@ -70,6 +70,29 @@ def test_deterministic_oracle_blocks_model_condition_changes():
     assert json.loads(client.messages[1][1]['content'])['canonical_question'] == QUESTION
 
 
+@pytest.mark.parametrize('review', [
+    {'decision': 'unknown', 'question': ''},
+    {'decision': 'clarify', 'question': ''},
+    {'decision': 'approve', 'question': 'unexpected question'},
+])
+def test_strict_conditions_do_not_bypass_reviewer_schema(review):
+    client, executor = Client([answers()[0], review]), Executor()
+    result = invoke_v1_agent_graph(_state(QUESTION, 'team-invalid-review-001'), executor, client=client)
+    assert result['status'] == 'failed'
+    assert result['error']['code'] == 'INVALID_AGENT_OUTPUT'
+    assert not executor.calls
+
+
+def test_strict_supported_period_cannot_be_reinterpreted_by_reviewer():
+    client, executor = Client([answers()[0], {'decision': 'clarify', 'question': '请确认月份范围。'},
+                               {'fact_ids': ['current.sales_amount', 'scope']}]), Executor()
+    result = invoke_v1_agent_graph(_state('分析2018年1月销售额', 'team-strict-review-001'), executor, client=client)
+    assert result['status'] == 'success'
+    assert result['plan']['collaboration']['review'] == 'approve'
+    assert result['plan']['collaboration']['review_model_decision'] == 'clarify'
+    assert result['plan']['collaboration']['review_override'] == 'strict_conditions'
+
+
 @pytest.mark.parametrize('answer', [{'fact_ids': ['invented.profit']}, {'fact_ids': [], 'summary': 'fake 999'},
                                    ToolError('MODEL_FAILED', 'private detail')])
 def test_interpreter_failure_preserves_verified_result_and_never_invents_prose(answer):
@@ -95,6 +118,24 @@ def test_disabled_model_fails_closed_without_tool(monkeypatch):
     result = invoke_v1_agent_graph(_state(QUESTION, 'team-disabled-001'), executor)
     assert result['status'] == 'failed' and result['error']['code'] == 'MODEL_DISABLED'
     assert not executor.calls and result['budget']['model_calls'] == 0
+
+
+@pytest.mark.parametrize('metric', ['销售量', '销量', '销售数量', '商品件数', '销 售 量'])
+@pytest.mark.parametrize('followup', [False, True])
+def test_quantity_clarifies_without_paid_guess_or_losing_parent(metric, followup):
+    from copy import deepcopy
+    from data_formulator.ecommerce.v1_normalization import normalize_question
+    state = _state(f'按地区分组{metric}最高前5', 'team-quantity-001')
+    parent = normalize_question('分析2018年1月销售额') if followup else {}
+    state['normalized_conditions'] = deepcopy(parent)
+    client, executor = Client([]), Executor()
+    result = invoke_v1_agent_graph(state, executor, client=client)
+    assert result['status'] == 'waiting_clarification'
+    assert '不支持商品件数' in result['error']['message']
+    assert '基于此分析继续追问' in result['error']['message']
+    assert result['normalized_conditions'] == parent
+    assert result['budget']['model_calls'] == 0
+    assert not client.messages and not executor.calls
 
 
 def test_parent_conditions_are_seen_by_both_planning_agents():

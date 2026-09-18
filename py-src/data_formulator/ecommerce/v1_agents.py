@@ -20,6 +20,8 @@ item prices excluding freight; metrics: order_count, sales_amount, average_order
 Only explicit historical periods, region codes, day/month/region grouping, sort/Top N.
 No SQL, Python, writes, refunds, profit, product filters, causal claims or guessed dates.
 Preserve every requested constraint, and inherit only unspecified conditions from parent.
+When an explicit grouping changes (region/day/month), clear inherited sorting and Top N;
+use only ranking explicitly requested in the new question. Keep period and region filters.
 Return one JSON object only, no markdown. Never silently discard unsupported clauses.'''
 
 PLANNER = POLICY + '''
@@ -39,6 +41,9 @@ REVIEWER = POLICY + '''
 Your role is an independent semantic Reviewer. Compare original question AND parent conditions
 against the Planner's canonical question and normalized conditions. Do not trust the Planner.
 Approve only if all user constraints and inherited unspecified fields are faithfully represented.
+When strict_conditions is present, it is the deterministic parser's exact binding of the user's
+supported syntax. Approve that binding unless the payload itself is malformed; do not invent a
+second date interpretation for a valid single-period grouping.
 Missing price/product filters, negations, invented dates or metrics require clarification.
 Schema exactly: {"decision":"approve"|"clarify","question":string}.
 On approve question is empty; otherwise ask a concrete Chinese clarification. You cannot execute
@@ -131,13 +136,30 @@ class QwenTeam:
         plan = dict(state['plan'])
         review = self.ask('reviewer', REVIEWER, {'question': state['user_question'],
             'parent_conditions': plan.get('parent_conditions', {}),
-            'canonical_question': plan['canonical_question'], 'conditions': state['normalized_conditions']})
+            'canonical_question': plan['canonical_question'], 'conditions': state['normalized_conditions'],
+            'strict_conditions': plan.get('binding') == 'strict_original'})
         if set(review) != {'decision', 'question'} or not _text(review['question']):
             raise ToolError('INVALID_AGENT_OUTPUT', 'Reviewer schema invalid')
-        plan['collaboration'] = {**plan['collaboration'], 'reviewer': 'qwen-flash', 'review': review['decision']}
-        if review['decision'] == 'clarify' and review['question'].strip():
+        model_decision = review['decision']
+        if (model_decision not in ('approve', 'clarify') or
+                (model_decision == 'approve' and review['question']) or
+                (model_decision == 'clarify' and not review['question'].strip())):
+            raise ToolError('INVALID_AGENT_OUTPUT', 'Reviewer decision invalid')
+        effective_decision = model_decision
+        override = None
+        if plan.get('binding') == 'strict_original':
+            # Deterministic exact syntax owns supported conditions. The reviewer
+            # checks semantic consistency, but cannot replace a valid explicit
+            # period with a guessed alternative.
+            effective_decision = 'approve'
+            override = 'strict_conditions'
+        plan['collaboration'] = {**plan['collaboration'], 'reviewer': 'qwen-flash',
+                                 'review': effective_decision, 'review_model_decision': model_decision}
+        if override:
+            plan['collaboration']['review_override'] = override
+        if effective_decision == 'clarify' and review['question'].strip():
             return _clarification(review['question'], plan.get('parent_conditions'), plan)
-        if review['decision'] != 'approve' or review['question']:
+        if effective_decision != 'approve' or (review['question'] and not override):
             raise ToolError('INVALID_AGENT_OUTPUT', 'Reviewer decision invalid')
         return {'plan': plan}
 
@@ -175,7 +197,9 @@ def verified_facts(result: dict[str, Any]):
             for metric, title in labels.items():
                 value = period['values'].get(metric)
                 facts[name + '.' + metric] = f'{label}{title}：{value if value is not None else "不适用"}。'
-            for index, group in enumerate(period.get('groups', [])[:6]):
+            # Scope plus five groups can fit the six-reference contract;
+            # totals and the other period remain optional candidate facts.
+            for index, group in enumerate(period.get('groups', [])[:5]):
                 facts[f'{name}.group.{index}'] = f'{label}分组 {group["key"]}：' + '，'.join(
                     f'{title} {group.get(metric) if group.get(metric) is not None else "不适用"}'
                     for metric, title in labels.items()) + '。'
