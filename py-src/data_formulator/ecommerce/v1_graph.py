@@ -71,7 +71,20 @@ def _invoke(stage: str, state: dict[str, Any], handlers: Mapping[str, Handler]) 
         raise ValueError(f"{stage} returned unknown state fields: {sorted(unknown)}")
     if "status" in updates and updates["status"] not in V1_STATUSES:
         raise ValueError(f"{stage} returned unknown status: {updates['status']}")
-    return {**updates, **_record(stage, state)}
+    next_state = {**state, **updates}
+    return {**updates, **_record(stage, next_state)}
+
+
+def v1_default_handlers() -> dict[str, Handler]:
+    """Return the deterministic V1 planner handler.
+
+    The remaining handlers stay injectable until their business tools are
+    migrated.  Keeping this factory separate preserves the old no-handler
+    traversal fixture and makes the planner contract directly testable.
+    """
+    from data_formulator.ecommerce.v1_normalization import planner_handler
+
+    return {"planner": planner_handler}
 
 
 def _route_after_planner(state: GraphState) -> str:
@@ -95,11 +108,11 @@ def _route_after_executor(state: GraphState) -> str:
 def build_v1_graph(handlers: Mapping[str, Handler] | None = None):
     """Compile one top-level graph with injectable node handlers.
 
-    ``handlers`` is used by later stages and tests.  Omitting it produces a
-    side-effect-free traversal graph, which is useful for checking routing and
-    persistence contracts before any model or data tool is called.
+    ``handlers`` is used by later stages and tests.  Omitting it enables the
+    deterministic V1 planner; passing an empty mapping explicitly retains a
+    side-effect-free traversal graph for routing and persistence checks.
     """
-    node_handlers = dict(handlers or {})
+    node_handlers = dict(v1_default_handlers() if handlers is None else handlers)
     unknown = set(node_handlers) - set(_STAGES)
     if unknown:
         raise ValueError(f"unknown V1 graph handlers: {sorted(unknown)}")

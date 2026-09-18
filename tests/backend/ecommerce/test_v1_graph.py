@@ -19,7 +19,7 @@ def _state():
 
 
 def test_default_graph_traverses_one_top_level_path_without_business_result():
-    result = invoke_v1_graph(_state())
+    result = invoke_v1_graph(_state(), handlers={})
     assert [item["stage"] for item in result["trace"]] == [
         "planner", "source_selector", "query_generator", "query_validator",
         "executor", "interpreter", "chart_planner",
@@ -42,4 +42,3 @@ def test_v0_is_the_default_and_v1_is_explicit():
     assert resolve_analysis_entrypoint() == "run_analysis"
     assert selected_mode("v1") == "v1"
     assert resolve_analysis_entrypoint("v1") == "invoke_v1_graph"
-
