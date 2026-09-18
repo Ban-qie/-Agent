@@ -1,9 +1,41 @@
 """Provision or disable invited local accounts; prompts never echo passwords."""
 import argparse
 import getpass
+import sys
 from pathlib import Path
 
 from devtools.run_local import ROOT, configure_offline
+
+
+def prompt_password(label):
+    """Read a password while showing one mask character per accepted key."""
+    if sys.platform != 'win32':
+        return getpass.getpass(label)
+    import msvcrt
+    sys.stdout.write(label)
+    sys.stdout.flush()
+    chars = []
+    while True:
+        key = msvcrt.getwch()
+        if key in ('\r', '\n'):
+            sys.stdout.write('\n')
+            sys.stdout.flush()
+            return ''.join(chars)
+        if key == '\003':
+            raise KeyboardInterrupt
+        if key in ('\b', '\x7f'):
+            if chars:
+                chars.pop()
+                sys.stdout.write('\b \b')
+                sys.stdout.flush()
+            continue
+        if key in ('\x00', '\xe0'):
+            msvcrt.getwch()  # consume the second byte of an extended key
+            continue
+        if key.isprintable():
+            chars.append(key)
+            sys.stdout.write('*')
+            sys.stdout.flush()
 
 
 def main():
@@ -20,8 +52,8 @@ def main():
     store = TaskStore(directory / 'multiuser.sqlite')
     store.initialize()
     if args.action == 'create':
-        password = getpass.getpass('New password: ')
-        if password != getpass.getpass('Repeat password: '):
+        password = prompt_password('New password: ')
+        if password != prompt_password('Repeat password: '):
             raise ValueError('Passwords do not match')
         store.create(args.username, password)
     else:
@@ -32,8 +64,8 @@ def main():
         if args.action == 'disable':
             store.revoke(account['id'], disable=True)
         else:
-            password = getpass.getpass('New password: ')
-            if password != getpass.getpass('Repeat password: '):
+            password = prompt_password('New password: ')
+            if password != prompt_password('Repeat password: '):
                 raise ValueError('Passwords do not match')
             store.change_password(account['id'], password)
     print('Account updated. No model calls or historical ledger changes.')
