@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from contextlib import nullcontext
 import re
 from typing import Any
 
@@ -14,12 +15,26 @@ from data_formulator.ecommerce.v1_graph import invoke_v1_business_graph
 def analyze_v1(body: Any, identity: str, audit_directory: Path, workspace=None) -> dict[str, Any]:
     if not isinstance(body, dict) or set(body) - {"request_id", "user_question", "parent_node_id"}:
         raise ToolError("INVALID_REQUEST", "Only request_id, user_question and parent_node_id are accepted")
-    request_id = body["request_id"]
-    question = body["user_question"]
+    request_id = body.get("request_id")
+    question = body.get("user_question")
     if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", request_id):
         raise ToolError("INVALID_REQUEST", "Invalid request_id")
     if not isinstance(question, str) or len(question.encode("utf-8")) > 2048:
         raise ToolError("INVALID_REQUEST", "Invalid user_question")
+    parent_node_id = body.get("parent_node_id")
+    if parent_node_id is not None and (not isinstance(parent_node_id, str) or
+            not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", parent_node_id) or parent_node_id == request_id):
+        raise ToolError("INVALID_REQUEST", "Invalid parent_node_id")
+    if parent_node_id and workspace is None:
+        raise ToolError("PARENT_NOT_FOUND", "Parent requires a saved workspace")
+    if workspace is not None:
+        workspace.read()  # Resolve abandoned runs before acquiring this run's lease.
+    with workspace.task_lease(request_id) if workspace is not None else nullcontext():
+        return _run(body, identity, audit_directory, workspace)
+
+
+def _run(body, identity, audit_directory, workspace):
+    request_id, question = body["request_id"], body["user_question"]
     parent_node_id = body.get("parent_node_id")
     inherited = workspace.parent_conditions(parent_node_id) if parent_node_id and workspace is not None else None
     if workspace is not None:
@@ -27,7 +42,7 @@ def analyze_v1(body: Any, identity: str, audit_directory: Path, workspace=None) 
         if existing is not None:
             if existing["question"] != question or existing.get("parent_node_id") != parent_node_id:
                 raise ToolError("REQUEST_CONFLICT", "V1 request ID belongs to another question or parent")
-            if existing["status"] in {"success", "empty_result", "partial", "failed", "waiting_clarification"}:
+            if existing["status"] in {"success", "empty_result", "partial", "failed", "waiting_clarification", "interrupted"}:
                 saved = existing.get("result") or {}
                 if saved:
                     return saved
@@ -47,9 +62,13 @@ def analyze_v1(body: Any, identity: str, audit_directory: Path, workspace=None) 
     if workspace is not None:
         workspace.save_run(node_id=request_id, parent_node_id=parent_node_id, question=question,
                            conditions=dict(inherited or {}), status="running")
-    result = invoke_v1_business_graph(
-        state, MetricExecutor(Path(audit_directory) / "execution-audit.json"), identity
-    )
+    try:
+        result = invoke_v1_business_graph(
+            state, MetricExecutor(Path(audit_directory) / "execution-audit.json"), identity
+        )
+    except Exception:
+        result = {"status": "failed", "normalized_conditions": inherited,
+                  "error": {"code": "ANALYSIS_FAILED", "message": "V1 analysis could not complete"}}
     status = result.get("status", "failed")
     if status == "waiting_clarification":
         response = {"state": "clarification_required", "question": (result.get("error") or {}).get("message"),

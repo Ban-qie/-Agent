@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -33,7 +34,7 @@ class V1WorkspaceStore:
         self.lock = self.path / "v1-state.lease"
 
     def _default(self):
-        return {"schema_version": 1, "workspace_id": WORKSPACE_ID, "nodes": []}
+        return {"schema_version": 1, "orchestrator": "v1", "workspace_id": WORKSPACE_ID, "nodes": []}
 
     def _read_unlocked(self):
         try:
@@ -80,13 +81,23 @@ class V1WorkspaceStore:
             changed = False
             for node in state["nodes"]:
                 if node["status"] == "running":
-                    node["status"] = "interrupted"
-                    node["error"] = {"code": "INTERRUPTED"}
-                    node["updated_at"] = datetime.now(timezone.utc).isoformat()
-                    changed = True
+                    try:
+                        with self.task_lease(node["node_id"]):
+                            node["status"] = "interrupted"
+                            node["error"] = {"code": "INTERRUPTED"}
+                            node["result"] = {"state": "interrupted", "error": node["error"]}
+                            node["updated_at"] = datetime.now(timezone.utc).isoformat()
+                            changed = True
+                    except ToolError as exc:
+                        if exc.code != "BUSY":
+                            raise
             if changed:
                 self._save_unlocked(state)
+            state["orchestrator"] = "v1"
             return state
+
+    def task_lease(self, node_id):
+        return lease(self.path / ("v1-task-" + hashlib.sha256(node_id.encode()).hexdigest() + ".lease"))
 
     def save_run(self, *, node_id: str, question: str, conditions: Mapping[str, Any],
                  status: str, result: Mapping[str, Any] | None = None,

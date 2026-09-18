@@ -3,6 +3,7 @@ export interface Period { start: string; end: string }
 export interface Conditions {
     current: Period; baseline?: Period | null; regions: string[]; group_by: string | null;
     snapshot_id: string; metric_version: string; request_id: string;
+    metrics?: (keyof Values)[]; sort?: { field: keyof Values; direction: string } | null; top_n?: number | null;
 }
 export interface MetricResult {
     state: string; values?: Values | null; groups?: (Values & { key: string })[];
@@ -15,10 +16,26 @@ export interface AnalysisResponse {
     state: string; question?: string; summary?: string; conditions?: Conditions;
     result?: MetricResult; partial_result?: MetricResult; error?: { code: string };
     limitations?: string[]; agent_completed?: boolean;
+    explanation?: { summary?: string }; chart_spec?: ChartPlan;
 }
+export interface ChartPlan { type: 'table' | 'bar' | 'line'; dimension?: string; measures?: (keyof Values)[]; source?: string }
 export interface AnalysisNode {
     node_id: string; request_id: string; user_question: string; response: AnalysisResponse;
     chart: { version: number; kind: string }; created_at: string; updated_at: string;
+    parent_node_id?: string | null;
+}
+export const metricLabels: Record<keyof Values, string> = { sales_amount: '商品金额', order_count: '订单数', average_order_amount: '客单价' };
+
+export function workspaceNodes(state: any): AnalysisNode[] {
+    if (state.schema_version !== 1 || !Array.isArray(state.nodes)) throw new Error('Invalid workspace');
+    if (state.orchestrator !== 'v1') return state.nodes;
+    return state.nodes.map((node: any) => {
+        const status = node.status === 'waiting_clarification' ? 'clarification_required' : node.status;
+        const response = { ...node.result, state: status,
+            conditions: node.result?.conditions || (node.conditions?.current ? node.conditions : undefined),
+            error: node.result?.error || node.error, chart_spec: node.result?.chart_spec || node.chart_spec };
+        return { ...node, request_id: node.node_id, user_question: node.question, response };
+    });
 }
 export interface ResultRow extends Values { label: string; period: string }
 export const examples = [
@@ -59,6 +76,17 @@ export function salesSpec(rows: ResultRow[]) {
     };
 }
 
+export function plannedSpec(rows: ResultRow[], plan: ChartPlan, measure: keyof Values) {
+    const spec = salesSpec(rows);
+    return { ...spec, description: `${metricLabels[measure]}图，与结果表使用相同数据`,
+        data: { values: rows.map(row => ({ ...row, amount: row[measure] == null ? null : Number(row[measure]) })) },
+        mark: { type: plan.type === 'line' ? 'line' as const : 'bar' as const, tooltip: true },
+        encoding: { ...spec.encoding,
+            y: { ...spec.encoding.y, title: metricLabels[measure] },
+            ...(plan.type === 'line' ? { xOffset: undefined } : {}),
+        } };
+}
+
 export function errorMessage(code?: string) {
     const messages: Record<string, string> = {
         MODEL_DISABLED: '服务端尚未启用分析模型，请由本机管理员启用 Qwen 后再分析。',
@@ -69,6 +97,9 @@ export function errorMessage(code?: string) {
         REQUEST_CONFLICT: '请求编号已用于其他条件，请重新发起分析。',
         MODEL_FAILED: '模型请求失败，未自动重试或修改条件。',
         ANALYSIS_TIMEOUT: '分析超时，未修改日期或地区条件。',
+        PARENT_NOT_FOUND: '父分析节点不可用，请刷新历史或开始独立分析。',
+        RESOURCE_LIMIT: '工作区或结果规模达到限制，请检查保存状态。',
+        INVALID_REQUEST: '分析请求无效，请检查问题后重新提交。',
     };
     return messages[code || ''] || '分析未完成。请检查输入条件或服务状态；没有自动重试。';
 }

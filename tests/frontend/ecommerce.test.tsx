@@ -42,6 +42,40 @@ describe('verified result presentation', () => {
 });
 
 describe('submission boundaries', () => {
+    it('restores V1 nodes, branches explicitly, and replays the same parent and ID', async () => {
+        const conditions = { current: { start: '2018-01-01', end: '2018-02-01' }, regions: [], group_by: null };
+        const nodes: any[] = [{ node_id: 'v1-parent-001', question: '父问题', status: 'success',
+            conditions, result: success }];
+        const bodies: any[] = [];
+        mocks.fetch.mockImplementation((url: string, options?: RequestInit) => {
+            if (url.endsWith('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ snapshots: [] }) });
+            if (url.endsWith('/workspace')) return Promise.resolve({ ok: true, json: async () => ({ schema_version: 1, orchestrator: 'v1', nodes }) });
+            const body = JSON.parse(options!.body as string); bodies.push(body);
+            if (bodies.length === 1) nodes.push({ node_id: body.request_id, parent_node_id: body.parent_node_id,
+                question: body.user_question, conditions, status: 'success', result: success });
+            return Promise.resolve({ ok: true, json: async () => success });
+        });
+        render(<EcommerceWorkspace />);
+        await screen.findByRole('table', { name: '分析结果表' });
+        fireEvent.click(screen.getByRole('button', { name: '基于此分析继续追问' }));
+        fireEvent.change(screen.getByLabelText('分析问题'), { target: { value: '按日显示' } });
+        fireEvent.click(screen.getByRole('button', { name: '开始分析' }));
+        await screen.findByText('父分析：父问题');
+        await waitFor(() => expect(screen.getByRole('button', { name: '开始分析' })).not.toBeDisabled());
+        fireEvent.click(screen.getByRole('button', { name: '开始分析' }));
+        await waitFor(() => expect(bodies).toHaveLength(2));
+        expect(bodies[0]).toEqual(bodies[1]);
+        expect(bodies[0].parent_node_id).toBe('v1-parent-001');
+    });
+    it('uses the V1 chart type and chosen measure, and labels partial results', async () => {
+        render(<EcommerceResults response={{ state: 'partial', result: success.result,
+            chart_spec: { type: 'line', measures: ['order_count'], source: 'verified_result' } }} />);
+        expect(screen.getByRole('alert')).toHaveTextContent('部分结果');
+        await waitFor(() => expect(mocks.embed).toHaveBeenCalled());
+        const spec = mocks.embed.mock.calls[0][1];
+        expect(spec.mark.type).toBe('line');
+        expect(spec.data.values[0].amount).toBe(values.order_count);
+    });
     it('keeps a saved BUSY failure terminal instead of pretending it is running', async () => {
         const response = { state: 'failed', error: { code: 'BUSY' } };
         const nodes: any[] = [];

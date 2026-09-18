@@ -1,4 +1,5 @@
 from pathlib import Path
+import pytest
 
 from data_formulator.ecommerce import v1_service
 from data_formulator.ecommerce.contracts import ToolError
@@ -70,3 +71,41 @@ def test_v1_service_persists_result_and_parent_branch(tmp_path, monkeypatch):
     node = store.read()["nodes"][-1]
     assert node["parent_node_id"] == "v1-parent-001"
     assert node["conditions"]["group_by"] == "day"
+
+
+def test_live_read_and_duplicate_do_not_interrupt_or_repeat_graph(tmp_path, monkeypatch):
+    store = V1WorkspaceStore(WorkspaceManager(tmp_path / 'workspaces'), 'local:test')
+    body = {'request_id': 'v1-concurrent-001', 'user_question': '分析2018年1月销售额'}
+    calls = []
+    def graph(*args):
+        calls.append(True)
+        assert store.read()['nodes'][0]['status'] == 'running'
+        with pytest.raises(ToolError) as exc:
+            v1_service.analyze_v1(body, 'local:test', tmp_path, store)
+        assert exc.value.code == 'BUSY'
+        return {'status': 'success', 'verified_result': {'state': 'success'}, 'normalized_conditions': {}}
+    monkeypatch.setattr(v1_service, 'invoke_v1_business_graph', graph)
+    response = v1_service.analyze_v1(body, 'local:test', tmp_path, store)
+    assert v1_service.analyze_v1(body, 'local:test', tmp_path, store) == response
+    assert len(calls) == 1
+
+
+def test_interrupted_request_never_reopens(tmp_path, monkeypatch):
+    store = V1WorkspaceStore(WorkspaceManager(tmp_path / 'workspaces'), 'local:test')
+    store.save_run(node_id='v1-abandoned-001', question='x', conditions={}, status='running')
+    monkeypatch.setattr(v1_service, 'invoke_v1_business_graph', lambda *args: pytest.fail('rerun'))
+    response = v1_service.analyze_v1({'request_id': 'v1-abandoned-001', 'user_question': 'x'},
+                                   'local:test', tmp_path, store)
+    assert response['state'] == 'interrupted'
+
+
+def test_graph_exception_is_saved_as_sanitized_failure(tmp_path, monkeypatch):
+    store = V1WorkspaceStore(WorkspaceManager(tmp_path / 'workspaces'), 'local:test')
+    def fail(*args):
+        raise RuntimeError('private provider detail')
+    monkeypatch.setattr(v1_service, 'invoke_v1_business_graph', fail)
+    response = v1_service.analyze_v1({'request_id': 'v1-failure-001', 'user_question': 'x'},
+                                   'local:test', tmp_path, store)
+    assert response['state'] == 'failed'
+    assert 'private' not in str(response)
+    assert store.read()['nodes'][0]['result'] == response
