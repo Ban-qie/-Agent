@@ -8,6 +8,7 @@ from data_formulator.ecommerce.contracts import ToolError, error_result, parse_r
 from data_formulator.ecommerce.executor import MetricExecutor, accepted_catalog
 from data_formulator.ecommerce.metrics import METRIC_CONTRACT
 from data_formulator.ecommerce.policy import restricted_mode
+from data_formulator.ecommerce.orchestrator import selected_mode
 
 ecommerce_bp = Blueprint("ecommerce", __name__, url_prefix="/api/ecommerce")
 
@@ -44,9 +45,13 @@ def query():
 def analyze():
     try:
         from data_formulator.datalake.workspace import get_data_formulator_home
-        from data_formulator.ecommerce.analysis_service import analyze as analyze_question
         identity = get_identity_id()
         body = request.get_json(silent=True)
+        if selected_mode() == "v1":
+            from data_formulator.ecommerce.v1_service import analyze_v1
+            result = analyze_v1(body, identity, Path(get_data_formulator_home()) / "ecommerce")
+            return result, (422 if result["state"] == "failed" else 200)
+        from data_formulator.ecommerce.analysis_service import analyze as analyze_question
         result = _workspace(identity).analyze(body, lambda: analyze_question(
             body, identity, Path(get_data_formulator_home()) / "ecommerce"))
         return result, (422 if result["state"] == "failed" else 200)
