@@ -28,6 +28,18 @@ class FakeExecutor:
         }
 
 
+class GroupExecutor(FakeExecutor):
+    def execute(self, identity, request):
+        self.calls += 1
+        groups = [
+            {"key": "SP", "order_count": 1, "sales_amount": "10.00"},
+            {"key": "RJ", "order_count": 1, "sales_amount": "2.00"},
+            {"key": "MG", "order_count": 1, "sales_amount": "8.00"},
+        ]
+        return {"state": self.state, "values": {"order_count": 3}, "groups": groups,
+                "total_groups": 3, "conditions": request.payload()}
+
+
 def test_business_graph_executes_only_validated_conditions_and_explains_result():
     executor = FakeExecutor()
     result = invoke_v1_business_graph(_state(), executor, "local:test")
@@ -49,6 +61,16 @@ def test_empty_result_is_terminal_and_does_not_get_presented_as_zero():
     assert result["status"] == "empty_result"
     assert "不等同于真实业务为零" in result["explanation"]["summary"]
     assert executor.calls == 1
+
+
+def test_v1_applies_requested_sort_and_top_n_after_verified_execution():
+    executor = GroupExecutor()
+    result = invoke_v1_business_graph(
+        _state("分析2018年1月销售额，按地区分组，销售金额减少最多前2"), executor
+    )
+    assert result["status"] == "success"
+    assert [group["key"] for group in result["verified_result"]["groups"]] == ["RJ", "MG"]
+    assert result["verified_result"]["truncated"] is True
 
 
 def test_outside_coverage_remains_distinguishable_from_empty_business_data():

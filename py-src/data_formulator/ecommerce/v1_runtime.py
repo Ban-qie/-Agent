@@ -7,6 +7,7 @@ the already restricted V0 metric executor and never to model generated code.
 from __future__ import annotations
 
 from copy import deepcopy
+from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping
 
 from data_formulator.ecommerce.contracts import ToolError, parse_request
@@ -70,6 +71,40 @@ def query_validator(state: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def executor_handler(executor, identity: str):
+    def order_groups(result: dict[str, Any], conditions: Mapping[str, Any]) -> dict[str, Any]:
+        sort = conditions.get("sort")
+        top_n = conditions.get("top_n")
+        if not sort and not top_n:
+            return result
+        field = (sort or {}).get("field", "sales_amount")
+        reverse = (sort or {}).get("direction") == "desc"
+
+        def apply(value: Any) -> Any:
+            if not isinstance(value, dict) or not isinstance(value.get("groups"), list):
+                return value
+            groups = list(value["groups"])
+            if sort:
+                def sort_key(item):
+                    raw = item.get(field)
+                    try:
+                        numeric = Decimal(str(raw)) if raw is not None else Decimal("NaN")
+                    except (InvalidOperation, ValueError):
+                        numeric = Decimal("NaN")
+                    return (raw is None, numeric)
+                groups.sort(key=sort_key, reverse=reverse)
+            total = value.get("total_groups", len(groups))
+            value = {**value, "groups": groups[:top_n] if top_n else groups,
+                     "total_groups": total,
+                     "truncated": bool(top_n and total > top_n)}
+            return value
+
+        if isinstance(result.get("groups"), list):
+            return apply(result)
+        for key in ("current", "baseline"):
+            if isinstance(result.get(key), dict):
+                result[key] = apply(result[key])
+        return result
+
     def execute(state: Mapping[str, Any]) -> dict[str, Any]:
         query = state.get("query")
         if not isinstance(query, Mapping) or query.get("validated") is not True:
@@ -83,6 +118,7 @@ def executor_handler(executor, identity: str):
             return _error(exc.code, exc.message)
         except Exception:
             return _error("EXECUTION_FAILED", "Restricted metric tool failed")
+        result = order_groups(dict(result), _conditions(state)) if isinstance(result, Mapping) else result
         state_name = result.get("state") if isinstance(result, Mapping) else None
         if state_name == "failed":
             return {"status": "failed", "verified_result": dict(result),
