@@ -63,7 +63,10 @@ def _record(stage: str, state: dict[str, Any]) -> dict[str, Any]:
 
 
 def _invoke(stage: str, state: dict[str, Any], handlers: Mapping[str, Handler]) -> dict[str, Any]:
-    if state.get("status") in V1_TERMINAL_STATUSES or state.get("status") == "waiting_clarification":
+    # A terminal executor result still needs interpreter/chart planning.  Only
+    # clarification is a hard stop at node invocation time; failed execution
+    # is stopped by the executor route before those nodes.
+    if state.get("status") == "waiting_clarification":
         return _record(stage, state)
     updates = dict(handlers[stage](dict(state))) if stage in handlers else {}
     unknown = set(updates) - _STATE_KEYS
@@ -145,3 +148,12 @@ def invoke_v1_graph(initial_state: Mapping[str, Any], handlers: Mapping[str, Han
     contract_fields = set(V1GraphState.__dataclass_fields__)
     V1GraphState.from_dict({key: value for key, value in output.items() if key in contract_fields})
     return output
+
+
+def invoke_v1_business_graph(initial_state: Mapping[str, Any], executor, identity: str = "local:v1",
+                             config: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Run V1's bounded business handlers with an explicitly supplied executor."""
+    from data_formulator.ecommerce.v1_runtime import business_handlers
+
+    handlers = {**v1_default_handlers(), **business_handlers(executor, identity)}
+    return invoke_v1_graph(initial_state, handlers=handlers, config=config)
