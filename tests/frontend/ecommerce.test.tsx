@@ -76,6 +76,22 @@ describe('submission boundaries', () => {
         expect(spec.mark.type).toBe('line');
         expect(spec.data.values[0].amount).toBe(values.order_count);
     });
+    it('keeps the parent when explicitly retrying a saved V1 failure', async () => {
+        const node = { node_id: 'v1-failed-child', parent_node_id: 'v1-root-parent', question: '按日显示',
+            status: 'failed', conditions: {}, result: { state: 'failed', error: { code: 'ANALYSIS_FAILED' } } };
+        const bodies: any[] = [];
+        mocks.fetch.mockImplementation((url: string, options?: RequestInit) => {
+            if (url.endsWith('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ snapshots: [] }) });
+            if (url.endsWith('/workspace')) return Promise.resolve({ ok: true, json: async () => ({ schema_version: 1, orchestrator: 'v1', nodes: [node] }) });
+            bodies.push(JSON.parse(options!.body as string));
+            return Promise.resolve({ ok: false, json: async () => node.result });
+        });
+        render(<EcommerceWorkspace />);
+        fireEvent.click(await screen.findByRole('button', { name: '故障已排除，发起新请求' }));
+        await waitFor(() => expect(bodies).toHaveLength(1));
+        expect(bodies[0].parent_node_id).toBe(node.parent_node_id);
+        expect(bodies[0].request_id).not.toBe(node.node_id);
+    });
     it('keeps a saved BUSY failure terminal instead of pretending it is running', async () => {
         const response = { state: 'failed', error: { code: 'BUSY' } };
         const nodes: any[] = [];

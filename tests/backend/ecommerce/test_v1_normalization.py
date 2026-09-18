@@ -18,10 +18,10 @@ def test_comparison_normalizes_metrics_periods_sort_and_top_n():
     assert result["current"] == {"start": "2018-02-01", "end": "2018-03-01"}
     assert result["baseline"] == {"start": "2018-01-01", "end": "2018-02-01"}
     assert result["group_by"] == "region"
-    assert result["sort"] == {"field": "sales_amount", "direction": "asc"}
+    assert result["sort"] == {"field": "sales_amount", "direction": "asc", "basis": "change"}
     assert result["top_n"] == 5
     payload = to_analysis_request_payload(result, "v1-request-001")
-    assert payload["operation"] == "compare" and payload["limit"] == 5
+    assert payload["operation"] == "compare" and payload["limit"] == 200
     request = to_analysis_request(result, "v1-request-001")
     assert request.current.start == "2018-02-01" and request.baseline.start == "2018-01-01"
 

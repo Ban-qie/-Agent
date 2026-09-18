@@ -3,7 +3,7 @@ export interface Period { start: string; end: string }
 export interface Conditions {
     current: Period; baseline?: Period | null; regions: string[]; group_by: string | null;
     snapshot_id: string; metric_version: string; request_id: string;
-    metrics?: (keyof Values)[]; sort?: { field: keyof Values; direction: string } | null; top_n?: number | null;
+    metrics?: (keyof Values)[]; sort?: { field: keyof Values; direction: string; basis?: string } | null; top_n?: number | null;
 }
 export interface MetricResult {
     state: string; values?: Values | null; groups?: (Values & { key: string })[];
@@ -11,6 +11,7 @@ export interface MetricResult {
     changes?: Record<keyof Values, { absolute: string | null; percent: string | null }> | null;
     total_groups?: number; truncated?: boolean; conditions?: Conditions; result_id?: string;
     provenance?: Record<string, string>; error?: { code: string };
+    ranking?: { key: string; absolute: string | null }[];
 }
 export interface AnalysisResponse {
     state: string; question?: string; summary?: string; conditions?: Conditions;
@@ -53,6 +54,7 @@ export function resultRows(result: MetricResult): ResultRow[] {
     return periods.flatMap(([period, summary]) => {
         if (!summary.values || summary.state === 'outside_coverage' || summary.state === 'empty_result') return [];
         const groups = summary.groups || [];
+        if (!groups.length && result.conditions?.group_by) return [];
         return groups.length ? groups.map(group => ({ ...group, label: group.key === 'UNKNOWN' ? '未知地区' : group.key, period })) :
             [{ ...summary.values, label: period, period }];
     });

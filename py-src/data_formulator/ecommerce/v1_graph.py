@@ -66,9 +66,14 @@ def _invoke(stage: str, state: dict[str, Any], handlers: Mapping[str, Handler]) 
     # A terminal executor result still needs interpreter/chart planning.  Only
     # clarification is a hard stop at node invocation time; failed execution
     # is stopped by the executor route before those nodes.
-    if state.get("status") == "waiting_clarification":
+    if state.get("status") in {"waiting_clarification", "failed", "interrupted"}:
         return _record(stage, state)
-    updates = dict(handlers[stage](dict(state))) if stage in handlers else {}
+    try:
+        updates = dict(handlers[stage](dict(state))) if stage in handlers else {}
+    except Exception:
+        # Keep verified_result already in graph state when interpretation or
+        # chart planning fails. Never expose arbitrary exception text.
+        updates = {"status": "failed", "error": {"code": "ANALYSIS_FAILED", "message": "V1 node failed"}}
     unknown = set(updates) - _STATE_KEYS
     if unknown:
         raise ValueError(f"{stage} returned unknown state fields: {sorted(unknown)}")

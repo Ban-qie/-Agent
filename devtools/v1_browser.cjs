@@ -63,6 +63,18 @@ const evidence = `docs/verification/${stage}-browser-v1.json`;
       assert.equal(await page.getByRole('table', { name: '分析结果表' }).count(), 0);
       await submit('最新两个完整月销售额', 'clarification_required');
       await page.getByText(/需要澄清/).waitFor();
+      if (stage === 'V1-15') {
+        await submit('比较2018年2月与2018年1月销售额按地区分组销售金额减少最多前3', 'success');
+        await page.getByRole('table', { name: '分组差额排名' }).waitFor();
+        await page.screenshot({ path: `.local/verification/${stage}-ranking.png`, fullPage: true });
+        await submit('分析2018年1月销售额按地区分组销售额最高前3', 'success');
+        const regionParent = await submit('分析2018年1月销售额、订单数、客单价地区SP、RJ按地区分组', 'success');
+        const clarificationParent = await submit('只看电子产品', 'clarification_required', regionParent);
+        await submit('按日显示', 'success', clarificationParent);
+        assert.deepEqual(cases.at(-1).response.conditions.regions, ['RJ', 'SP']);
+        await submit('比较2018年1月与2016年11月销售额、订单数、客单价', 'success');
+        await submit('分析2018年1月销售额只看价格大于100的订单', 'clarification_required');
+      }
       const count = posts.length;
       await page.reload({ waitUntil: 'networkidle' });
       await ready();
@@ -90,6 +102,31 @@ const evidence = `docs/verification/${stage}-browser-v1.json`;
       await page.getByRole('button', { name: '开始分析', exact: true }).click();
       assert.deepEqual(await (await duplicate).json(), node.response);
       await ready();
+      if (stage === 'V1-15' && process.env.V1_VERIFY_QWEN_BASELINE === 'true') {
+        const comparisons = [];
+        for (const question of ['比较2018年2月与2018年1月销售额、订单数、客单价',
+                                '分析2018年1月销售额、订单数、客单价地区SP、RJ按地区分组']) {
+          await page.getByLabel('分析问题').fill(question);
+          const start = Date.now(), n = JSON.parse(fs.readFileSync('.local/verification/qwen-usage.json')).length;
+          const pending = page.waitForResponse(r => r.url().endsWith('/analyze'));
+          await page.getByRole('button', { name: '开始分析', exact: true }).click();
+          const response = await (await pending).json();
+          if (response.state !== 'success') fs.writeFileSync(`docs/verification/${stage}-v0-failed-${Date.now()}.json`, JSON.stringify({ body: posts.at(-1), response }, null, 2));
+          assert.equal(response.state, 'success');
+          assert.equal(response.agent_completed, true);
+          await ready();
+          const elapsed_ms = Date.now() - start, body = posts.at(-1);
+          const after = JSON.parse(fs.readFileSync('.local/verification/qwen-usage.json')).length;
+          assert.equal(after - n, 2);
+          const replay = page.waitForResponse(r => r.url().endsWith('/analyze'));
+          await page.getByRole('button', { name: '开始分析', exact: true }).click();
+          assert.deepEqual(await (await replay).json(), response);
+          await ready();
+          assert.equal(JSON.parse(fs.readFileSync('.local/verification/qwen-usage.json')).length, after);
+          comparisons.push({ body, response, elapsed_ms, new_model_attempts: after - n });
+        }
+        fs.writeFileSync(`docs/verification/${stage}-v0-comparison.json`, JSON.stringify(comparisons, null, 2));
+      }
     }
     await page.setViewportSize({ width: 390, height: 844 });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -108,6 +145,18 @@ const evidence = `docs/verification/${stage}-browser-v1.json`;
         await page.getByRole('table', { name: '分析结果表' }).waitFor();
         await page.unroute('**/api/ecommerce/analyze');
       }
+      const security = [];
+      for (const [route, method, headers, data] of [
+        ['/api/agent/analyst-streaming', 'POST', {}, {}],
+        ['/api/ecommerce/workspace', 'POST', {}, { nodes: [] }],
+        ['/api/ecommerce/workspace', 'GET', { Origin: 'https://foreign.example' }],
+        ['/api/ecommerce/workspace', 'GET', { Host: 'foreign.example:5567' }],
+      ]) {
+        const response = await page.request.fetch(origin + route, { method, headers, data });
+        assert.equal(response.status(), 403);
+        security.push({ route, method, status: response.status() });
+      }
+      fs.writeFileSync(`docs/verification/${stage}-browser-security.json`, JSON.stringify(security, null, 2));
     }
     assert.deepEqual(errors, []);
     fs.writeFileSync(`docs/verification/${stage}-browser-${phase}-summary.json`, JSON.stringify({

@@ -64,6 +64,9 @@ def _find_periods(text: str) -> list[dict[str, str]]:
     # Intervals must be consumed before the individual date matcher.
     intervals = list(INTERVAL_RE.finditer(text))
     if intervals:
+        remainder = INTERVAL_RE.sub('', text)
+        if DATE_RE.search(remainder) or MONTH_RE.search(remainder) or ISO_MONTH_RE.search(remainder):
+            raise NormalizationError('请统一使用年月或明确的左闭右开区间，不混用期间表达。')
         return [_period_token(item.group(0)) for item in intervals]
     matches = list(MONTH_RE.finditer(text)) + list(ISO_MONTH_RE.finditer(text))
     matches.sort(key=lambda item: item.start())
@@ -76,13 +79,13 @@ def _find_periods(text: str) -> list[dict[str, str]]:
 
 
 def _metrics(text: str, inherited: list[str] | None) -> list[str]:
-    found = []
-    # Keep the public order stable for tables and prompt handoffs.
-    for metric, aliases in (("order_count", ("有效订单数", "订单数", "订单量")),
-                            ("sales_amount", ("商品销售金额", "商品金额", "销售金额", "销售额")),
-                            ("average_order_amount", ("平均订单商品金额", "平均订单金额", "客单价"))):
-        if any(alias in text for alias in aliases):
-            found.append(metric)
+    found = set()
+    for alias, metric in sorted(((alias, metric) for metric, aliases in METRIC_ALIASES for alias in aliases),
+                                key=lambda item: len(item[0]), reverse=True):
+        if alias in text:
+            found.add(metric)
+            text = text.replace(alias, '')
+    found = [metric for metric in ('order_count', 'sales_amount', 'average_order_amount') if metric in found]
     return found or list(inherited or ())
 
 
@@ -105,19 +108,45 @@ def _sort(text: str, inherited: Mapping[str, Any] | None) -> dict[str, str] | No
     # metric happens to be mentioned last in the complete request.
     direction_pos = min((text.find(word) for word in ("减少", "下降", "增加", "上涨", "最高", "最低", "最多", "最少", "排序", "降序", "升序") if text.find(word) >= 0), default=len(text))
     candidates = []
-    for metric, aliases in (("order_count", ("订单数", "订单量")),
-                            ("sales_amount", ("商品销售金额", "商品金额", "销售金额", "销售额")),
-                            ("average_order_amount", ("平均订单商品金额", "平均订单金额", "客单价"))):
-        for alias in aliases:
-            position = text.rfind(alias, 0, direction_pos + 1)
-            if position >= 0:
-                candidates.append((position, metric))
+    prefix = text[:direction_pos + 1]
+    for alias, metric in sorted(((alias, metric) for metric, aliases in METRIC_ALIASES for alias in aliases),
+                                key=lambda item: len(item[0]), reverse=True):
+        for match in list(re.finditer(re.escape(alias), prefix)):
+            candidates.append((match.start(), metric))
+        prefix = prefix.replace(alias, ' ' * len(alias))
     if candidates:
         field = max(candidates)[1]
-    return {"field": field, "direction": direction}
+    elif len(_metrics(text, None)) == 1:
+        field = _metrics(text, None)[0]
+    result = {"field": field, "direction": direction}
+    if any(word in text for word in ('减少最多', '下降最多', '增加最多', '上涨最多')):
+        result['basis'] = 'change'
+    return result
+
+
+def _require_consumed(text: str):
+    """Reject unrecognized clauses instead of dropping meaningful conditions."""
+    for pattern in (INTERVAL_RE, DATE_RE, MONTH_RE, ISO_MONTH_RE):
+        text = pattern.sub('', text)
+    text = re.sub(r'(?:前|top)(\d{1,3})(?:个)?(?:地区|组)?', '', text, flags=re.I)
+    text = REGION_RE.sub('', text)
+    vocabulary = [alias for _, aliases in METRIC_ALIASES for alias in aliases] + [
+        '从低到高', '从高到低', '减少最多', '下降最多', '增加最多', '上涨最多',
+        '不含运费', '已交付订单', '已交付', '下单时间', '下单日期', '按地区分组', '按地区拆开',
+        '按地区汇总', '按地区比较', '地区维度', '各地区', '按地区', '按日分组', '按日显示',
+        '按日看', '按日', '按天', '按月分组', '按月显示', '按月看', '按月', '销售趋势',
+        '趋势', '分析', '比较', '对比', '查看', '显示', '继续', '分组', '汇总', '地区',
+        '最高', '最低', '最多', '最少', '排序', '降序', '升序', '的', '与', '和', '及', '至', '到',
+    ]
+    for word in sorted(vocabulary, key=len, reverse=True):
+        text = text.replace(word, '')
+    if re.sub(r'[，,、。.!！?？:：;；\s]', '', text):
+        raise NormalizationError('问题中存在未支持或无法确认的条件，请明确期间、指标、地区和分组；未忽略这些条件。')
 
 
 def _top_n(text: str, inherited: int | None) -> int | None:
+    if len(re.findall(r'(?:前|top\s*)\d+', text, flags=re.I)) > 1:
+        raise NormalizationError('请只指定一个 Top N。')
     match = re.search(r"(?:前|top\s*)(\d{1,3})", text, flags=re.I)
     if match:
         value = int(match.group(1))
@@ -142,7 +171,7 @@ def _reject_ambiguous(text: str) -> None:
         raise NormalizationError("问题包含当前版本不支持的操作或指标，请只提供电商分析条件。")
     if any(word in text for word in ("最近", "最新", "本月", "上个月", "上月", "今年", "去年")):
         raise NormalizationError("时间范围不能依据机器当前日期推断，请提供明确的年月或起止日期。")
-    if any(word in text for word in ("支付金额", "付款金额", "实付", "净销售", "净收入", "会计收入", "退款", "含运费", "利润")):
+    if any(word in text.replace('不含运费', '') for word in ("支付金额", "付款金额", "实付", "净销售", "净收入", "会计收入", "退款", "含运费", "利润")):
         raise NormalizationError("销售额口径有歧义；请确认使用不含运费的商品销售金额，或说明当前版本不支持的口径。")
     if any(word in text for word in ("取消订单", "已取消", "待付款", "运输中", "订单状态")):
         raise NormalizationError("订单状态必须明确；当前 V1 只支持已交付订单。")
@@ -156,6 +185,16 @@ def normalize_question(question: str, inherited: Mapping[str, Any] | None = None
         raise NormalizationError("问题不能为空且不得超过 2048 个 UTF-8 字节。")
     text = re.sub(r"\s+", "", question).strip("，。！？?,.! ")
     _reject_ambiguous(text)
+    # Normalize lowercase region codes only in an explicit region clause.
+    text = re.sub(r'地区([a-z]{2})(?![A-Za-z])', lambda m: '地区' + m[1].upper(), text)
+    _require_consumed(text)
+    groups = [bool(re.search(pattern, text)) for pattern in (r'按地区|各地区|地区维度', r'按日|按天', r'按月')]
+    if sum(groups) > 1:
+        raise NormalizationError('一次分析只支持一个分组维度，请明确选择。')
+    ascending = any(word in text for word in ('减少最多', '下降最多', '最低', '最少', '从低到高', '升序'))
+    descending = any(word in text for word in ('增加最多', '上涨最多', '最高', '从高到低', '降序'))
+    if ascending and descending:
+        raise NormalizationError('排序方向冲突，请只指定一个方向。')
     base = deepcopy(dict(inherited or {}))
     metrics = _metrics(text, base.get("metrics"))
     if not metrics:
@@ -167,7 +206,11 @@ def normalize_question(question: str, inherited: Mapping[str, Any] | None = None
         is_compare = True
     current = base.get("current")
     baseline = base.get("baseline")
-    if len(periods) >= 2:
+    if len(periods) > 2:
+        raise NormalizationError('一次比较仅支持两个期间，请明确当前期和基准期。')
+    if len(periods) == 2:
+        if (MONTH_RE.search(text) or ISO_MONTH_RE.search(text)) and re.search(r'至|到', text):
+            raise NormalizationError('月份范围的结束边界不明确，请使用 [起始日期,结束日期) 区间或明确比较两个期间。')
         current, baseline = periods[0], periods[1]
         is_compare = True
     elif len(periods) == 1:
@@ -208,6 +251,11 @@ def normalize_question(question: str, inherited: Mapping[str, Any] | None = None
         "sales_basis": "item_price_excluding_freight",
         "status": "confirmed",
     }
+    if result['sort'] or result['top_n']:
+        if not group_by:
+            raise NormalizationError('排序和 Top N 需要明确分组维度。')
+        if result['sort'] and result['sort'].get('basis') == 'change' and not is_compare:
+            raise NormalizationError('增减排名需要两个明确的比较期间。')
     # Validate the executable subset with the existing request contract.
     try:
         parse_request({
@@ -239,7 +287,9 @@ def to_analysis_request_payload(conditions: Mapping[str, Any], request_id: str,
         "baseline": deepcopy(conditions.get("baseline")),
         "regions": list(conditions.get("regions", [])),
         "group_by": conditions.get("group_by"),
-        "limit": conditions.get("top_n") or 100,
+        # Rank only after collecting the full bounded group set; never rank a
+        # prefix already truncated by the metric worker.
+        "limit": 200 if conditions.get('sort') or conditions.get('top_n') else 100,
     }
     parse_request(payload)
     return payload
@@ -257,7 +307,7 @@ def planner_handler(state: Mapping[str, Any]) -> dict[str, Any]:
     try:
         conditions = normalize_question(state.get("user_question", ""), state.get("normalized_conditions"))
     except NormalizationError as exc:
-        return {"status": "waiting_clarification", "normalized_conditions": {"status": "clarification_required"},
+        return {"status": "waiting_clarification", "normalized_conditions": dict(state.get('normalized_conditions') or {"status": "clarification_required"}),
                 "plan": {"clarification": exc.message}, "error": {"code": exc.code, "message": exc.message}}
     return {"normalized_conditions": conditions,
             "plan": {"operation": conditions["operation"], "metrics": conditions["metrics"], "status": "confirmed"}}

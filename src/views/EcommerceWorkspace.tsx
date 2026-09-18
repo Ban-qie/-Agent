@@ -59,7 +59,8 @@ export function EcommerceResults({ response }: { response: AnalysisResponse }) {
             {conditions.baseline && <Typography variant="body2">基准期：{periodLabel(conditions.baseline)}</Typography>}
             <Typography variant="body2">地区：{conditions.regions.length ? conditions.regions.join('、') : '全部地区（包括未知地区）'} · 分组：{({ region: '地区', day: '天', month: '月' } as Record<string, string>)[conditions.group_by || ''] || '不分组'}</Typography>
             {conditions.metrics && <Typography variant="body2">所选指标：{conditions.metrics.map(metric => metricLabels[metric]).join('、')}</Typography>}
-            {conditions.sort && <Typography variant="body2">排序：{metricLabels[conditions.sort.field]} · {conditions.sort.direction === 'asc' ? '升序' : '降序'}{conditions.top_n ? ` · 前 ${conditions.top_n} 组` : ''}</Typography>}
+            {conditions.sort && <Typography variant="body2">排序：{metricLabels[conditions.sort.field]}{conditions.sort.basis === 'change' ? '两期差额' : conditions.baseline ? '当前期数值' : ''} · {conditions.sort.direction === 'asc' ? '升序' : '降序'}{conditions.top_n ? ` · 前 ${conditions.top_n} 组` : ''}</Typography>}
+            {!conditions.sort && conditions.top_n && <Typography variant="body2">按分组键顺序显示前 {conditions.top_n} 组。</Typography>}
         </Paper>}
         {result?.state === 'outside_coverage' ? <Alert severity="warning">日期超出快照观测范围，未裁剪日期或放宽条件；没有生成图表。</Alert> : result && <>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
@@ -76,6 +77,10 @@ export function EcommerceResults({ response }: { response: AnalysisResponse }) {
                 </TableRow>)}</TableBody>
             </Table></TableContainer>}
             {rows.length > 0 && <>
+                {result.ranking && <TableContainer component={Paper} variant="outlined"><Table size="small" aria-label="分组差额排名">
+                    <TableHead><TableRow><TableCell>分组</TableCell><TableCell>当前期减基准期（{conditions?.sort && metricLabels[conditions.sort.field]}）</TableCell></TableRow></TableHead>
+                    <TableBody>{result.ranking.map(row => <TableRow key={row.key}><TableCell>{row.key}</TableCell><TableCell>{row.absolute ?? '—（缺少可比值）'}</TableCell></TableRow>)}</TableBody>
+                </Table></TableContainer>}
                 {truncated && <Alert severity="warning">分组已截断：每期最多显示 {conditions?.top_n || 100} 组。图表与表格仅含显示的分组，上方总计仍覆盖全部选定记录。</Alert>}
                 {response.chart_spec?.type !== 'table' && (response.chart_spec?.measures || ['sales_amount' as const]).map(measure =>
                     <Paper key={measure} variant="outlined" sx={{ p: 2 }}><Typography variant="subtitle1">{metricLabels[measure]}对照</Typography>

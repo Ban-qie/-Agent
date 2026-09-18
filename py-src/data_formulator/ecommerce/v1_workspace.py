@@ -47,14 +47,16 @@ class V1WorkspaceStore:
                 raise ValueError
             seen = set()
             for node in state["nodes"]:
-                if not isinstance(node, dict) or not NODE_ID.fullmatch(node.get("node_id", "")):
+                if not isinstance(node, dict) or not isinstance(node.get('node_id'), str) or not NODE_ID.fullmatch(node['node_id']):
                     raise ValueError
                 if node["node_id"] in seen or node.get("status") not in STATES:
                     raise ValueError
                 parent = node.get("parent_node_id")
-                if parent is not None and (not NODE_ID.fullmatch(parent) or parent == node["node_id"]):
+                if parent is not None and (not isinstance(parent, str) or not NODE_ID.fullmatch(parent) or parent not in seen):
                     raise ValueError
                 if not isinstance(node.get("conditions"), dict) or not isinstance(node.get("question"), str):
+                    raise ValueError
+                if len(node['question'].encode('utf-8')) > 2048 or any(not isinstance(node.get(key), dict) for key in ('result', 'chart_spec', 'error')):
                     raise ValueError
                 seen.add(node["node_id"])
             if len(state["nodes"]) > MAX_NODES:
@@ -109,8 +111,15 @@ class V1WorkspaceStore:
             state = self._read_unlocked()
             existing = next((item for item in state["nodes"] if item["node_id"] == node_id), None)
             if existing:
-                if existing["question"] != question or (existing["status"] != "running" and existing["conditions"] != dict(conditions)):
+                if existing["question"] != question or existing.get('parent_node_id') != parent_node_id or (existing["status"] != "running" and existing["conditions"] != dict(conditions)):
                     raise ToolError("REQUEST_CONFLICT", "V1 node belongs to different conditions")
+                if existing['status'] != 'running':
+                    if any(existing[key] != value for key, value in {
+                        'status': status, 'result': dict(result or {}), 'chart_spec': dict(chart_spec or {}),
+                        'error': dict(error or {}),
+                    }.items()):
+                        raise ToolError('REQUEST_CONFLICT', 'A terminal V1 node cannot be rewritten')
+                    return existing
                 existing["conditions"] = dict(conditions)
                 existing.update(status=status, result=dict(result or {}), chart_spec=dict(chart_spec or {}),
                                 error=dict(error or {}), updated_at=datetime.now(timezone.utc).isoformat())
@@ -134,6 +143,8 @@ class V1WorkspaceStore:
         node = next((item for item in state["nodes"] if item["node_id"] == node_id), None)
         if node is None:
             raise ToolError("PARENT_NOT_FOUND", "V1 parent node was not found")
+        if node['status'] == 'running':
+            raise ToolError('BUSY', 'Wait for the parent analysis to finish')
         return dict(node["conditions"])
 
     def get_node(self, node_id: str):

@@ -66,7 +66,7 @@ def test_empty_result_is_terminal_and_does_not_get_presented_as_zero():
 def test_v1_applies_requested_sort_and_top_n_after_verified_execution():
     executor = GroupExecutor()
     result = invoke_v1_business_graph(
-        _state("分析2018年1月销售额，按地区分组，销售金额减少最多前2"), executor
+        _state("分析2018年1月销售额，按地区分组，销售金额最低前2"), executor
     )
     assert result["status"] == "success"
     assert [group["key"] for group in result["verified_result"]["groups"]] == ["RJ", "MG"]

@@ -7,7 +7,6 @@ the already restricted V0 metric executor and never to model generated code.
 from __future__ import annotations
 
 from copy import deepcopy
-from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping
 
 from data_formulator.ecommerce.contracts import ToolError, parse_request
@@ -72,37 +71,44 @@ def query_validator(state: Mapping[str, Any]) -> dict[str, Any]:
 
 def executor_handler(executor, identity: str):
     def order_groups(result: dict[str, Any], conditions: Mapping[str, Any]) -> dict[str, Any]:
-        sort = conditions.get("sort")
-        top_n = conditions.get("top_n")
+        sort, top_n = conditions.get("sort"), conditions.get("top_n")
         if not sort and not top_n:
             return result
+        periods = [result[k] for k in ("current", "baseline") if isinstance(result.get(k), dict)] or [result]
+        if any(p.get("truncated") for p in periods):
+            raise ToolError("RESOURCE_LIMIT", "Cannot rank an incomplete group set; narrow the explicit period")
         field = (sort or {}).get("field", "sales_amount")
         reverse = (sort or {}).get("direction") == "desc"
+        from fractions import Fraction
+        from data_formulator.ecommerce.metrics import decimal_text
 
-        def apply(value: Any) -> Any:
-            if not isinstance(value, dict) or not isinstance(value.get("groups"), list):
-                return value
-            groups = list(value["groups"])
-            if sort:
-                def sort_key(item):
-                    raw = item.get(field)
-                    try:
-                        numeric = Decimal(str(raw)) if raw is not None else Decimal("NaN")
-                    except (InvalidOperation, ValueError):
-                        numeric = Decimal("NaN")
-                    return (raw is None, numeric)
-                groups.sort(key=sort_key, reverse=reverse)
-            total = value.get("total_groups", len(groups))
-            value = {**value, "groups": groups[:top_n] if top_n else groups,
-                     "total_groups": total,
-                     "truncated": bool(top_n and total > top_n)}
-            return value
+        def numeric(group):
+            if not group or group.get(field) is None:
+                return None
+            if field == "average_order_amount" and "sales_minor" in group:
+                return Fraction(group["sales_minor"], 100 * group["order_count"]) if group["order_count"] else None
+            return Fraction(str(group[field]))
 
-        if isinstance(result.get("groups"), list):
-            return apply(result)
-        for key in ("current", "baseline"):
-            if isinstance(result.get(key), dict):
-                result[key] = apply(result[key])
+        mappings = [{g["key"]: g for g in p.get("groups", [])} for p in periods]
+        keys = sorted(set().union(*(set(m) for m in mappings)))
+        change = (sort or {}).get("basis") == "change"
+        def value(key):
+            current = numeric(mappings[0].get(key))
+            if not change:
+                return current
+            baseline = numeric(mappings[1].get(key)) if len(mappings) == 2 else None
+            return current - baseline if current is not None and baseline is not None else None
+        if sort:
+            available = [key for key in keys if value(key) is not None]
+            unavailable = [key for key in keys if value(key) is None]
+            keys = sorted(available, key=value, reverse=reverse) + unavailable
+        chosen = keys[:top_n] if top_n else keys
+        for period, mapping in zip(periods, mappings):
+            period["groups"] = [mapping[key] for key in chosen if key in mapping]
+            period["truncated"] = len(chosen) < len(keys)
+        if change:
+            result["ranking"] = [{"key": key, "absolute": decimal_text(value(key), 0 if field == "order_count" else 2)
+                                  if value(key) is not None else None} for key in chosen]
         return result
 
     def execute(state: Mapping[str, Any]) -> dict[str, Any]:
@@ -118,7 +124,10 @@ def executor_handler(executor, identity: str):
             return _error(exc.code, exc.message)
         except Exception:
             return _error("EXECUTION_FAILED", "Restricted metric tool failed")
-        result = order_groups(dict(result), _conditions(state)) if isinstance(result, Mapping) else result
+        try:
+            result = order_groups(deepcopy(dict(result)), _conditions(state)) if isinstance(result, Mapping) else result
+        except ToolError as exc:
+            return _error(exc.code, exc.message)
         state_name = result.get("state") if isinstance(result, Mapping) else None
         if state_name == "failed":
             return {"status": "failed", "verified_result": dict(result),
