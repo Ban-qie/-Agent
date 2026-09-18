@@ -435,3 +435,7 @@ data/processed/
 # Private development history: keep locally; publish only the release summary.
 /docs/verification/
 /docs/V0-*.md
+/docs/V1-交接记录.md
+/docs/V1-14-frontend-acceptance.md
+/docs/V1-15-acceptance.md
+/docs/V1-16-*.md

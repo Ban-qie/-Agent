@@ -1,27 +1,26 @@
-# 电商运营数据分析 Agent · V0
+# 电商运营数据分析 Agent · V1
 
-本仓库在 Microsoft Data Formulator `0.8b1`（`5477f0e236426dc8f74a498ec400414fba7fbc0f`）基础上，实现本机单用户电商分析：三个固定指标、明确期间比较、地区分组、结果表与图表、工作区保存和重启恢复。运行时复用单 AnalystAgent，模型为 Qwen Flash；不开放任意 SQL/Python、连接器或公网访问。
+基于 Microsoft Data Formulator `0.8b1`，在 V0 单 AnalystAgent 基线上新增 LangGraph 业务图、条件继承、父分支、排名与恢复。当前 V1 的七个业务节点是确定性处理器，不调用模型；V0 的 Qwen 路径仍为默认且可回退。只开放本机单用户、固定电商快照和受限只读工具。
 
-- [安装、数据准备、启动与已知限制](docs/ECOMMERCE_V0.md)
-- [V0 发布说明与验收摘要](docs/RELEASE_V0.md)
-- [上游来源、许可证与数据分发边界](THIRD_PARTY_NOTICES.md)
-- [受限配置说明](.env.example)（仅示例，受限启动器不自动读取 dotenv）
+- [V1 启动、操作、恢复与回退](docs/ECOMMERCE_V1.md)
+- [V1 本地版本说明与验证范围](docs/RELEASE_V1.md)
+- [V0 运行与模型配置](docs/ECOMMERCE_V0.md)
+- [来源与许可](THIRD_PARTY_NOTICES.md) · [配置参考](.env.example)
 
-已有验收环境直接启动，无需重新安装依赖：
+已有验收环境无需重装依赖。在项目根目录的 PowerShell 显式启动 V1：
 
 ```powershell
+$env:ECOMMERCE_ANALYSIS_ORCHESTRATOR = 'v1'
 .\.venv\Scripts\python.exe -m devtools.run_ecommerce
-# 默认离线。启用已配置的服务端 Qwen 和有效费用账目：
-.\.venv\Scripts\python.exe -m devtools.run_ecommerce --qwen
 ```
 
-访问 http://127.0.0.1:5567，Ctrl+C 停止。新克隆需先按运行文档准备依赖、构建和合法取得的 Olist 数据。仓库不包含原始/派生数据、用户工作区、密钥或费用账目；缺失费用账目时付费分析拒绝执行。
+打开 http://127.0.0.1:5567，Ctrl+C 停止。切回 V0 前停止服务并设置环境变量为 `v0`。启动器不读取 dotenv。新机器先按运行指南准备锁定依赖、前端构建和合法取得的 Olist 数据；源码不包含数据、工作区、密钥或费用账目。V1 可离线执行分析；V0 付费分析仍需自己的 Qwen 密钥和完整有效账目。
 
-本地回归 199 项、前端 12 项以及真实模型链路验收通过，范围和限制见发布说明。标签 `v0.1.0` 是本项目 V0 源码基线；没有发布同名上游 Python 包或桌面安装包。
+V1-15 已通过相关后端 264 项、前端 15 项及浏览器/独立复算验收；本地固化阶段不重复这些测试。`v0.2.0` 是 V1 本地源码标签，`v0.1.0` 是 V0 回退基线。当前未推送 V1、未发布安装包或公网服务。
 
 ---
 
-以下保留上游 README。其通用安装、连接器、生成代码、云端演示和部署能力不属于本项目受限 V0 启动入口。
+以下保留上游 README。其通用连接器、代码生成、云端与部署入口不属于本项目受限启动路径。
 
 <h1 align="center">
   <img src="./public/favicon.ico" alt="Data Formulator icon" width="28">&nbsp;

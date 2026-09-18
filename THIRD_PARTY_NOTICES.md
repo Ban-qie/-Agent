@@ -6,6 +6,10 @@
 
 主要增量：受限电商快照/指标/执行器、单 AnalystAgent 窄适配、模型预算、本机身份兼容、工作区持久化、React 电商页面及测试和运行工具。React、MUI、Vega、Python/Flask 和其他第三方包仍按各自许可证使用；依赖版本以原 `uv.lock` / `yarn.lock` 为准。本次源码发布不打包第三方二进制、node_modules 或虚拟环境。
 
+## V1 依赖与贡献
+
+V1 新增依赖 LangGraph `1.2.11`（MIT，来源 https://github.com/langchain-ai/langgraph），通过安装包调用其状态图 API；各传递依赖许可证以其发布包为准。V1 的条件规范化、受限业务节点、父分支适配与验收工具为本仓库增量；不将 LangGraph 图引擎、上游 AnalystAgent、工作区或图表引擎认领为原创。当前锁文件包含 V1 新增依赖，不能再称为完全未改动的上游锁文件。
+
 ## 数据
 
 [Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)，作者 Olist，Kaggle 数据集 `olistbr/brazilian-ecommerce`，版本 2，许可证 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)。这不是 MIT 数据；使用须遵守署名、非商业和相同方式共享等原许可条件。
