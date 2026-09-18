@@ -1,6 +1,6 @@
 # V3 本地使用与验收边界
 
-V3使用管理员分配的账号密码，不启用QQ。原单用户V0/V1入口与历史保留；新用户不会自动继承本机旧节点。HTTP仅127.0.0.1:5567，页面/multiuser，不对外开放。本版本提供隔离离线验收服务，不是公网生产启动器；没有真实Qwen预算授权，不启用真实模型。
+V3使用管理员分配的账号密码，不启用QQ。原单用户V0/V1入口与历史保留；新用户不会自动继承本机旧节点。HTTP仅127.0.0.1:5567，页面/multiuser，不对外开放。正式入口会复用V1的服务端Qwen配置与传输；网站运行账目写入隔离数据库，不使用调试campaign的10元上限。
 
 ## 账号
 
@@ -14,9 +14,20 @@ V3使用管理员分配的账号密码，不启用QQ。原单用户V0/V1入口�
 
 默认仅写.local/v3/multiuser.sqlite，不修改原.local/runtime与真实账目。此命令不启动服务，不开放注册，不发送邀请。
 
+## 启动真实 Qwen 网站
+
+先在当前用户环境配置 `qwen-api-key`，再创建受邀账号。启动不会自动发起模型请求；只有登录用户提交分析时才调用 Qwen。密钥只注入进程环境，不写入账号库、日志或命令行。
+
+```powershell
+.\.venv\Scripts\python.exe -m devtools.v3_accounts create alice
+.\.venv\Scripts\python.exe -m devtools.run_v3
+```
+
+网站产生的预留、未知费用和实际 usage 写入 `.local/v3/multiuser.sqlite` 的 `website_usage`，与 `.local/verification/qwen-usage.json` 调试账目分开。V3 仍限制单任务调用次数和运行时间，防止单次请求失控；不限制网站累计金额。
+
 ## 可复验浏览器出口
 
-先确认5567端口空闲；工具若检测占用会停止，不关闭现有服务。复用已构建的dist及已有Playwright/Edge，不安装依赖。每次使用新的attempt目录；禁止覆盖旧证据。
+先确认5567端口空闲；工具若检测占用会停止，不关闭现有服务。复用已构建的dist及已有Playwright/Edge，不安装依赖。每次使用新的attempt目录；禁止覆盖旧证据。离线浏览器工具仍固定使用OfflineModel，不代表真实Qwen入口。
 
 ```powershell
 $env:NODE_PATH='C:\Users\Kobe Bryant\AppData\Local\AgentProjectTools\browser\node_modules'
