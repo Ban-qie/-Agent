@@ -22,6 +22,17 @@ def analyze_v1(body: Any, identity: str, audit_directory: Path, workspace=None) 
         raise ToolError("INVALID_REQUEST", "Invalid user_question")
     parent_node_id = body.get("parent_node_id")
     inherited = workspace.parent_conditions(parent_node_id) if parent_node_id and workspace is not None else None
+    if workspace is not None:
+        existing = workspace.get_node(request_id)
+        if existing is not None:
+            if existing["question"] != question or existing.get("parent_node_id") != parent_node_id:
+                raise ToolError("REQUEST_CONFLICT", "V1 request ID belongs to another question or parent")
+            if existing["status"] in {"success", "empty_result", "partial", "failed", "waiting_clarification"}:
+                saved = existing.get("result") or {}
+                if saved:
+                    return saved
+            if existing["status"] == "running":
+                raise ToolError("BUSY", "V1 request is already running")
     state = {
         "run_id": request_id,
         "workspace_id": "ecommerce-v0",

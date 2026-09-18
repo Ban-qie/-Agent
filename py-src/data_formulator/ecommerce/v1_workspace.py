@@ -124,3 +124,7 @@ class V1WorkspaceStore:
         if node is None:
             raise ToolError("PARENT_NOT_FOUND", "V1 parent node was not found")
         return dict(node["conditions"])
+
+    def get_node(self, node_id: str):
+        state = self.read()
+        return next((dict(item) for item in state["nodes"] if item["node_id"] == node_id), None)

@@ -85,6 +85,8 @@ def _v1_workspace(identity):
 @ecommerce_bp.get("/workspace")
 def workspace():
     try:
+        if selected_mode() == "v1":
+            return _v1_workspace(get_identity_id()).read()
         return _workspace(get_identity_id()).read()
     except ToolError as exc:
         return error_result(exc.code, exc.message), (409 if exc.code == "BUSY" else 400)
