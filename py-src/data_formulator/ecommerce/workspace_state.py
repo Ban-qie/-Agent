@@ -12,7 +12,6 @@ import re
 from pathlib import Path
 
 from data_formulator.ecommerce.contracts import ToolError, error_result
-from data_formulator.ecommerce.analysis import bind_question
 from data_formulator.ecommerce.executor import SNAPSHOT_ID
 from data_formulator.ecommerce.metrics import METRIC_VERSION
 
@@ -145,6 +144,10 @@ class AnalysisWorkspace:
                 now = datetime.now(timezone.utc).isoformat()
                 running = {"state": "running"}
                 try:
+                    # Workspace recovery and lease handling must remain offline:
+                    # importing the Analyst stack can initialize LiteLLM and
+                    # perform a remote model-cost lookup before any analysis.
+                    from data_formulator.ecommerce.analysis import bind_question
                     running["conditions"] = bind_question(question, rid).payload()
                 except ToolError as exc:
                     if exc.code != "CLARIFICATION_REQUIRED":
