@@ -64,4 +64,6 @@ LangGraph 状态只描述一次运行；Data Threads/工作区节点保存用户
 
 ## 下一阶段入口
 
-V1-06 才开始 LangGraph 运行时骨架和 V0/V1 路由适配。进入该阶段前，需保持本文件与 `v1_contracts.py` 通过静态检查，并将当前 V0 回归结果作为对照样本。
+V1-06/07 已搭建 `langgraph==1.2.11` 的单顶层图骨架，并提供 `ECOMMERCE_ANALYSIS_ORCHESTRATOR` 选择器。默认值为 `v0`，因此现有 API 仍走 V0 `run_analysis`；显式选择 `v1` 才进入骨架入口。当前骨架只记录节点遍历，不发布业务结果，真实节点处理留给 V1-08 以后。
+
+进入 V1-08 前，需保持本文件、`v1_contracts.py` 和 `v1_graph.py` 的静态检查，并将当前 V0 回归结果作为对照样本。
