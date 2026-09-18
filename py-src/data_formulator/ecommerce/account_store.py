@@ -55,7 +55,7 @@ class AccountStore:
     @staticmethod
     def validate(username, password):
         if (not isinstance(username, str) or not re.fullmatch(r'[a-zA-Z0-9_-]{3,32}', username)
-                or not isinstance(password, str) or not 12 <= len(password) <= 128):
+                or not isinstance(password, str) or not 6 <= len(password) <= 30):
             raise ValueError('Invalid account credentials')
         try:
             if len(password.encode('utf-8')) > 512:

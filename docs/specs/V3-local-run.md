@@ -4,7 +4,7 @@ V3使用管理员分配的账号密码，不启用QQ。原单用户V0/V1入口�
 
 ## 账号
 
-在项目PowerShell中用已有.venv；密码由隐藏交互输入，不放命令行或聊天。账号上限10，密码12—128字符；内部UUID稳定。禁用/改密立即撤销旧会话，每账号仅一个有效登录。
+在项目PowerShell中用已有.venv；密码由交互输入并显示星号，不放命令行或聊天。账号上限10，密码6—30字符；内部UUID稳定。禁用/改密立即撤销旧会话，每账号仅一个有效登录。
 
 ```powershell
 .\.venv\Scripts\python.exe -m devtools.v3_accounts create alice
