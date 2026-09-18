@@ -12,20 +12,29 @@ from data_formulator.ecommerce.metrics import METRIC_VERSION
 from data_formulator.ecommerce.v1_agents import invoke_v1_agent_graph as invoke_v1_business_graph
 
 
-def analyze_v1(body: Any, identity: str, audit_directory: Path, workspace=None) -> dict[str, Any]:
+def validate_analyze_request(body: Any) -> None:
     if not isinstance(body, dict) or set(body) - {"request_id", "user_question", "parent_node_id"}:
         raise ToolError("INVALID_REQUEST", "Only request_id, user_question and parent_node_id are accepted")
     request_id = body.get("request_id")
     question = body.get("user_question")
     if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", request_id):
         raise ToolError("INVALID_REQUEST", "Invalid request_id")
-    if not isinstance(question, str) or len(question.encode("utf-8")) > 2048:
+    try:
+        valid_question = isinstance(question, str) and bool(question.strip()) and len(question.encode("utf-8")) <= 2048
+    except UnicodeError:
+        valid_question = False
+    if not valid_question:
         raise ToolError("INVALID_REQUEST", "Invalid user_question")
     parent_node_id = body.get("parent_node_id")
     if parent_node_id is not None and (not isinstance(parent_node_id, str) or
             not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", parent_node_id) or parent_node_id == request_id):
         raise ToolError("INVALID_REQUEST", "Invalid parent_node_id")
-    if parent_node_id and workspace is None:
+
+
+def analyze_v1(body: Any, identity: str, audit_directory: Path, workspace=None) -> dict[str, Any]:
+    validate_analyze_request(body)
+    request_id = body['request_id']
+    if body.get('parent_node_id') and workspace is None:
         raise ToolError("PARENT_NOT_FOUND", "Parent requires a saved workspace")
     if workspace is not None:
         workspace.read()  # Resolve abandoned runs before acquiring this run's lease.
@@ -95,7 +104,13 @@ def _run(body, identity, audit_directory, workspace):
     if result.get("error"):
         response["error"] = result["error"]
     if workspace is not None:
-        workspace.save_run(node_id=request_id, parent_node_id=parent_node_id, question=question,
-                           conditions=result.get("normalized_conditions") or {}, status=status,
-                           result=response, chart_spec=result.get("chart_spec"), error=result.get("error"))
+        try:
+            workspace.save_run(node_id=request_id, parent_node_id=parent_node_id, question=question,
+                               conditions=result.get("normalized_conditions") or {}, status=status,
+                               result=response, chart_spec=result.get("chart_spec"), error=result.get("error"))
+        except OSError:
+            # The caller may still inspect completed calculations. On restart the
+            # durable running marker becomes interrupted, never automatically rerun.
+            response.update(state='failed', error={'code': 'WORKSPACE_UNAVAILABLE',
+                'message': 'Result could not be saved; automatic replay is disabled'})
     return response

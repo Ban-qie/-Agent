@@ -48,11 +48,18 @@ def analyze():
         identity = get_identity_id()
         body = request.get_json(silent=True)
         if selected_mode() == "v1":
-            from data_formulator.ecommerce.v1_service import analyze_v1
+            from data_formulator.ecommerce.v1_service import analyze_v1, validate_analyze_request
+            validate_analyze_request(body)
             result = analyze_v1(body, identity, Path(get_data_formulator_home()) / "ecommerce",
                                 _v1_workspace(identity))
+            if (result.get('error') or {}).get('code') == 'WORKSPACE_UNAVAILABLE':
+                return result, 500
             return result, (422 if result["state"] == "failed" else 200)
         from data_formulator.ecommerce.analysis_service import analyze as analyze_question
+        from data_formulator.ecommerce.v1_service import validate_analyze_request
+        validate_analyze_request(body)
+        if 'parent_node_id' in body:
+            raise ToolError('INVALID_REQUEST', 'V0 does not accept parent_node_id')
         result = _workspace(identity).analyze(body, lambda: analyze_question(
             body, identity, Path(get_data_formulator_home()) / "ecommerce"))
         return result, (422 if result["state"] == "failed" else 200)

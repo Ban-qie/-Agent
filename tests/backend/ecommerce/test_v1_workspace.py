@@ -39,3 +39,19 @@ def test_v1_running_node_is_interrupted_after_reload(tmp_path):
     restored = store.read()
     assert restored["nodes"][0]["status"] == "interrupted"
     assert restored["nodes"][0]["error"]["code"] == "INTERRUPTED"
+def test_v2_unknown_saved_version_is_rejected_without_overwrite(tmp_path):
+    import json
+    from data_formulator.datalake.workspace_manager import WorkspaceManager
+    from data_formulator.ecommerce.v1_workspace import V1WorkspaceStore
+    from data_formulator.ecommerce.contracts import ToolError
+    store = V1WorkspaceStore(WorkspaceManager(tmp_path), 'local:version')
+    store.file.parent.mkdir(parents=True, exist_ok=True)
+    original = json.dumps({'schema_version': 999, 'nodes': []}).encode()
+    store.file.write_bytes(original)
+    try:
+        store.read()
+    except ToolError as exc:
+        assert exc.code == 'WORKSPACE_UNAVAILABLE'
+    else:
+        raise AssertionError('Unknown version accepted')
+    assert store.file.read_bytes() == original

@@ -54,3 +54,13 @@ def test_core_anomalies_block_snapshot(source, case):
 def test_money_rejects_nondecimal(value):
     with pytest.raises(ValueError):
         minor_units(value)
+
+
+def test_v2_hand_calculated_two_orders_three_items(source):
+    from data_formulator.ecommerce.metrics import summarize_rows, Period
+    source['items']['price'] = ['10.00', '20.00', '0.00']
+    table, _ = validate_and_derive(**source)
+    result = summarize_rows(table.to_dict('records'), Period('2018-01-01', '2018-02-01'),
+        {'observed_purchase_min': '2018-01-01', 'observed_purchase_max': '2018-02-28'})
+    assert result['values'] == {'order_count': 2, 'sales_minor': 3000,
+                                'sales_amount': '30.00', 'average_order_amount': '15.00'}

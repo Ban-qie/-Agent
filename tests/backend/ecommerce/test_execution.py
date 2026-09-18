@@ -137,3 +137,22 @@ def test_busy_and_execution_count_limit(payload, executor, monkeypatch):
     with pytest.raises(ToolError) as exc:
         executor.execute("local:tester", parse_request(payload))
     assert exc.value.code == "RESOURCE_LIMIT"
+
+
+def test_v2_worker_exit_releases_process_and_audit_lock(payload, executor, monkeypatch):
+    from data_formulator.ecommerce import executor as module
+    original = subprocess.Popen
+    processes = []
+    def launch(*args, **kwargs):
+        process = original([sys.executable, '-I', '-c', 'import sys; sys.stdin.read(); sys.exit(7)'], **kwargs)
+        processes.append(process)
+        return process
+    monkeypatch.setattr(module.subprocess, 'Popen', launch)
+    result = executor.execute('local:test', parse_request(payload))
+    assert result['state'] == 'failed' and result['error']['code'] == 'EXECUTION_FAILED'
+    assert all(p.poll() is not None for p in processes)
+    assert not executor.audit_path.with_suffix('.lock').exists()
+    monkeypatch.setattr(module.subprocess, 'Popen', original)
+    assert executor.execute('local:test', parse_request(payload)) == result
+    payload['request_id'] = 'v2-worker-next-001'
+    assert executor.execute('local:test', parse_request(payload))['state'] == 'success'

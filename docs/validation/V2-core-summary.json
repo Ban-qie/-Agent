@@ -1,0 +1,278 @@
+{
+  "stage": "V2",
+  "status": "passed",
+  "date": "2026-09-18",
+  "base_commit": "a7b53dfdb0e88eb4a12f40a2ea857d0d26a0825a",
+  "fixed_ref": "refs/tags/v0.3.0-v2-core",
+  "commit_receipt": "docs/verification/V2-S06/release.json (local private receipt)",
+  "publication": "local only; no push or deployment",
+  "completed_tasks": [
+    "V2-S01",
+    "V2-S02",
+    "V2-S03",
+    "V2-S04",
+    "V2-S05",
+    "V2-S06"
+  ],
+  "core_cases": {
+    "explicit_period_three_metrics": {
+      "passed": true,
+      "evidence": [
+        "numeric_reference",
+        "full_current_backend"
+      ]
+    },
+    "two_period_comparison": {
+      "passed": true,
+      "evidence": [
+        "numeric_reference",
+        "full_current_backend"
+      ]
+    },
+    "day_month_trends": {
+      "passed": true,
+      "evidence": [
+        "condition_inheritance",
+        "restore"
+      ]
+    },
+    "region_top_n_ties": {
+      "passed": true,
+      "evidence": [
+        "numeric_reference",
+        "restore"
+      ]
+    },
+    "followup_and_sibling_branches": {
+      "passed": true,
+      "evidence": [
+        "condition_inheritance",
+        "restore"
+      ]
+    },
+    "clarification_quantity_empty_outside": {
+      "passed": true,
+      "evidence": [
+        "agent_boundary",
+        "restore"
+      ]
+    },
+    "charts_tables_same_values": {
+      "passed": true,
+      "evidence": [
+        "frontend",
+        "restore"
+      ]
+    },
+    "save_restart_no_reexecution": {
+      "passed": true,
+      "evidence": [
+        "restore",
+        "service_recovery"
+      ]
+    },
+    "input_limits_and_untrusted_text": {
+      "passed": true,
+      "evidence": [
+        "input_guards",
+        "input_recovery",
+        "full_current_backend"
+      ]
+    },
+    "fixed_snapshot_metric_contract": {
+      "passed": true,
+      "evidence": [
+        "numeric_reference",
+        "full_current_backend"
+      ]
+    },
+    "fact_id_allowlist": {
+      "passed": true,
+      "evidence": [
+        "agent_boundary",
+        "full_current_backend"
+      ]
+    },
+    "read_only_worker_resources": {
+      "passed": true,
+      "evidence": [
+        "execution_save_faults",
+        "full_current_backend"
+      ]
+    },
+    "blocking_deadline_and_unknown_fees": {
+      "passed": true,
+      "evidence": [
+        "killable_transport",
+        "provider_faults",
+        "full_current_backend"
+      ]
+    },
+    "failure_partial_results": {
+      "passed": true,
+      "evidence": [
+        "execution_save_faults",
+        "frontend"
+      ]
+    },
+    "unknown_saved_version_no_overwrite": {
+      "passed": true,
+      "evidence": [
+        "unknown_version"
+      ]
+    }
+  },
+  "tests": {
+    "backend": {
+      "passed": 355,
+      "failed": 0,
+      "exit_code": 0
+    },
+    "frontend": {
+      "passed": 22,
+      "failed": 0,
+      "exit_code": 0
+    },
+    "typescript": {
+      "exit_code": 0
+    },
+    "production_build": {
+      "exit_code": 0
+    },
+    "reuse": "Frontend/type/build executed at S05 on identical final frontend source; not rerun at S06.",
+    "post_test_change": "Removed one trailing blank line in model_transport.py during git diff --check; no executable change, tests reused."
+  },
+  "restoration": {
+    "nodes": 12,
+    "actual_service_restart": true,
+    "browser_width": 390,
+    "analysis_posts": 0,
+    "new_usage": 0,
+    "workspace_hash_unchanged": true
+  },
+  "v0_fallback": {
+    "passed": true,
+    "current_tests": "full_current_backend includes V0 analysis/workspace/HTTP recovery and budget stream roundtrip",
+    "historical_browser": "V1-R05 v0-restore: two original saved responses, 0 POST/0 calls; unchanged V0 storage schema; not a new V2 live model sample"
+  },
+  "ledger": {
+    "start_calls": 247,
+    "end_calls": 247,
+    "new_calls": 0,
+    "known_estimated_cny": 0.0499281,
+    "reserved_cny": 4.89,
+    "unknown_usage_calls": 2,
+    "start_sha256": "0fcdda9608e24c7397414f4bd493f5bde13b6b1b173414f7984214d0482fa0fc",
+    "end_sha256": "0fcdda9608e24c7397414f4bd493f5bde13b6b1b173414f7984214d0482fa0fc",
+    "project_cap_cny": 10,
+    "new_live_budget": 0
+  },
+  "failures_retained": [
+    "V1-R06: original V1 14/20 with six failures; separate V1-R06-fix 20/20 retained",
+    "V2-S02 b-baseline: 6 passed/14 failed; fixed in first repair",
+    "V2-S04 a-baseline: 22 passed/1 failed; early pause, resumed and first repair passed",
+    "V2-S04 b-baseline: 25 passed/1 failed; first repair passed",
+    "V2-S05 a-baseline: sandbox startup failure; a-baseline2: 17 passed/5 failed; each focused repair passed",
+    "V2-S05 c-attempt1 missing browser tool path; c-attempt2 log decoding; c-attempt3 duplicate label selector; c-attempt4 passed"
+  ],
+  "limitations": [
+    "Windows single-user loopback only; V3/V4 not implemented or accepted.",
+    "No new real provider calls. Transport has changed; acceptance uses offline stub and real disposable processes, not a new provider success-rate claim.",
+    "Local process termination cannot prove remote provider cancellation; unknown usage reservations remain charged conservatively.",
+    "V0 internal streaming is bounded-buffered; no performance improvement claim.",
+    "Disk failure retains calculated results in current HTTP response only; durable running state recovers as interrupted, not successful.",
+    "Proxy/server request framing, production authentication, concurrency/quota migration and Linux limits remain V3/V4 work.",
+    "Flask-Session deprecation and existing Vite eval/large chunk warnings remain.",
+    "No V5 optional features. Historical real model and CSV evidence is explicitly historical."
+  ],
+  "evidence": {
+    "scope": {
+      "path": "docs/verification/V2-S01/a-attempt1.json",
+      "sha256": "4e1d3d778dc1905e87529330bae983c3bfb132ed7356f74e524452ddd896ad64"
+    },
+    "input_guards": {
+      "path": "docs/verification/V2-S02/b-attempt1.json",
+      "sha256": "16ba91e65af38e8858dcf4dc39b079e4445f67a4dac9a0efe0397ede67f3eb0b"
+    },
+    "input_recovery": {
+      "path": "docs/verification/V2-S02/bc-boundaries-attempt1.json",
+      "sha256": "aa9892e801323b6618f4250683da9cf4687f1cc7b3998ffb949c48cc4bf56805"
+    },
+    "numeric_reference": {
+      "path": "docs/verification/V2-S03/a-attempt1.json",
+      "sha256": "29bbdccb61db08dd8eb5b8f34759a28f85294a3f1018062a869a697ee36873b5"
+    },
+    "condition_inheritance": {
+      "path": "docs/verification/V2-S03/b-attempt1.json",
+      "sha256": "870ed449d383ad2f70c7dcfeed3b34a985352569394c937cad972c33a4c5a0a3"
+    },
+    "agent_boundary": {
+      "path": "docs/verification/V2-S03/c-attempt1.json",
+      "sha256": "c4fe09658bd1028918e069cbf8c5359ccddc270d168cdacb5fe35fdf2d354aa5"
+    },
+    "provider_faults": {
+      "path": "docs/verification/V2-S04/a-attempt1.json",
+      "sha256": "ebb7749ea80cd21789efbb5752c8d4ec7a8c8b55588dc30933298a8a7dcb7cae"
+    },
+    "killable_transport": {
+      "path": "docs/verification/V2-S04/a-wire-attempt1.json",
+      "sha256": "6dc504875f1225eaa78d9fd3b96d65f01d2261e0a45da0f3a1cae7279a0b3633"
+    },
+    "execution_save_faults": {
+      "path": "docs/verification/V2-S04/b-attempt1.json",
+      "sha256": "537a79d5bea3dfccef046b8d9a2f595b092eb282fad93eea75cc3c002242bb4e"
+    },
+    "service_recovery": {
+      "path": "docs/verification/V2-S04/c-attempt1.json",
+      "sha256": "bc2327a79e3a5b2cda17944180ea3fb5236aadb38e67336992f8e75f489ba71e"
+    },
+    "frontend": {
+      "path": "docs/verification/V2-S05/b3-attempt1.json",
+      "sha256": "4d396af7ef3ed866ea63bbbe3203fef35bf57c8b69a05fe6d9642330b5c11491"
+    },
+    "restore": {
+      "path": "docs/verification/V2-S05/c-attempt4/summary.json",
+      "sha256": "05f297a78f181001804a0faffae68bac8d025b8c74185a9e748aeeaac4659200"
+    },
+    "unknown_version": {
+      "path": "docs/verification/V2-S05/c-version-attempt1.json",
+      "sha256": "130e44c42d37bd6af4ead353b02ed1cfadd983865df1faa74e8f9106da723462"
+    },
+    "full_current_backend": {
+      "path": "docs/verification/V2-S06-attempt1-regression.json",
+      "sha256": "9f60b6cf69a3e98595c3efeaa69f5ebb026ef924048c7e84be04ff69cd74e93d"
+    }
+  },
+  "business_file_sha256": {
+    "py-src/data_formulator/ecommerce/analysis.py": "49530bf1cb8a4ec30ee482e7d4c7ee3b57863ed4ee5c11868a9a3183f86eb9be",
+    "py-src/data_formulator/ecommerce/analysis_service.py": "fa8b3dfba41df8452c177fbbdfca3923bd0197125213d446b7b544cfecd8214f",
+    "py-src/data_formulator/ecommerce/budget.py": "0be3be44f7f7a9f97f11dcb4bba46687264525871e00ea944b2818928b35ac54",
+    "py-src/data_formulator/ecommerce/contracts.py": "ea4b1b930738db31d18a697207061796174e4604f1666dd91bf0789e1022631e",
+    "py-src/data_formulator/ecommerce/executor.py": "0bd6e5cdaba5d830b64402b79f73316d2bc9d21534c08fd9d925f7d3f4d964fa",
+    "py-src/data_formulator/ecommerce/metrics.py": "ff225462a7a3565c5f9e0e19ac679a1097caeeb004018296237c83c5eedc5e47",
+    "py-src/data_formulator/ecommerce/orchestrator.py": "e6abe068e7e32a3bd8a53b4122aa41450f7a5caaadc1d299db02b6197f4502ec",
+    "py-src/data_formulator/ecommerce/policy.py": "96082902f000981a8ef1d59b5ca07f6043e5276f0b88c003d8f4894c9adb61ee",
+    "py-src/data_formulator/ecommerce/process_limits.py": "533c7d7267040dec590b71936ef571f838a67f4b8a39142413772b06ed7ef164",
+    "py-src/data_formulator/ecommerce/snapshot.py": "e42a9e25ed83fb09bc1b324b7b3102657b0f87cee5aa8ff6913e4381d405cd2c",
+    "py-src/data_formulator/ecommerce/v1_agents.py": "c1fa7f720fa96a30d2900b1f5c6069174b8e8a577175f72228b83437741b2c1f",
+    "py-src/data_formulator/ecommerce/v1_contracts.py": "0502d311dc854e9be98d7614221ab945a48c159a24cec6acf2892173d7f33cee",
+    "py-src/data_formulator/ecommerce/v1_graph.py": "c8c69f56c3d5e4611284457b22d9378fb533d417ba2b7959ab834e7cee89a261",
+    "py-src/data_formulator/ecommerce/v1_normalization.py": "21c40093485fc2f89daca90f7f45806b2b30674c7f192eccce24bf17876bad47",
+    "py-src/data_formulator/ecommerce/v1_runtime.py": "43ea6eedce71366775a5b16854dd84dd18931b0eaf05ca52f0fcf648bed4a6d2",
+    "py-src/data_formulator/ecommerce/v1_service.py": "4c0364501f569d1dbd38bfa44068e718ac829d433a671f533785bbddee2c5399",
+    "py-src/data_formulator/ecommerce/v1_workspace.py": "a1485f94f0aeed7970f58ea590ccf0cc1d0da3009abfac4745bac95f6efe4f5d",
+    "py-src/data_formulator/ecommerce/worker.py": "bbab3a418ff27808534f2d6559c0515b777cc2545b8d02c61cfd7d6809d741cb",
+    "py-src/data_formulator/ecommerce/workspace_state.py": "e6f9c42ca5389a7ae19b61f0192a6200a94f088b48e14f1c4ecd58de5664ae53",
+    "py-src/data_formulator/ecommerce/__init__.py": "00bfa16d2f0ac69c5bc8951cc3c83473eaf9475807863887f3e6eb74d77e094d",
+    "py-src/data_formulator/routes/ecommerce.py": "bdfa672244605a4f215446ac0eccd1610ed7a96fbb9336f1f5062eaa4cfc13fe",
+    "src/views/EcommerceWorkspace.tsx": "e1d5baf868e7ed127a1c4d3482d8685048e0e7c563be6f15165d7f47aabf7ee4",
+    "src/views/ecommerce.ts": "4a98e51cade56de59e8f8c315b7b3149b75f8adc830adedf8cfabc27d77b8283",
+    "uv.lock": "b4a0c9f5c5ebf183dd4fa42dedd1959eaf9e3a1000518367a24480c9fe3241bb",
+    "yarn.lock": "687c1e711a73699df23a9eabf682a2b8230079623e5a7285d9d5edab2b2b396a",
+    "py-src/data_formulator/ecommerce/model_transport.py": "91eeccb69dae35221732eaacc63587deb89ae840ad6ca7f09bb1e2aae9313a59",
+    "py-src/data_formulator/ecommerce/model_worker.py": "f24ac7f0d989f0dfa72c16d3b1d8cc3851dec79aeec611b0f55454d8ad65588a"
+  },
+  "next_task": "V3-S01",
+  "auto_continue": false,
+  "stop_reason": "User requested stop after V2-S06"
+}

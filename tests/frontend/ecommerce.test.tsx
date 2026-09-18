@@ -12,6 +12,53 @@ const success: AnalysisResponse = { state: 'success', result: { state: 'success'
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 mocks.embed.mockResolvedValue({ finalize: vi.fn() });
 
+describe('V2 malformed and failed responses', () => {
+    it.each([
+        { state: 'success', result: { state: 'success', values: { sales_amount: '30.00' } } },
+        { state: 'success', result: { state: 'success', current: { state: 'success', values }, changes: {} } },
+    ])('shows an explicit incomplete-data message for missing fields', response => {
+        render(<EcommerceResults response={response as AnalysisResponse} />);
+        expect(screen.getByText(/结果数据不完整/)).toBeInTheDocument();
+    });
+    it('shows unknown status without claiming verified results', () => {
+        render(<EcommerceResults response={{ state: 'future-status', result: success.result }} />);
+        expect(screen.getByRole('alert')).toHaveTextContent('未知');
+        expect(mocks.embed).not.toHaveBeenCalled();
+    });
+    it.each(['sync', 'async'])('keeps the table after %s chart failure', async kind => {
+        if (kind === 'sync') mocks.embed.mockImplementationOnce(() => { throw new Error('chart'); });
+        else mocks.embed.mockRejectedValueOnce(new Error('chart'));
+        render(<EcommerceResults response={success} />);
+        expect(await screen.findByText(/图表暂不可用/)).toBeInTheDocument();
+        expect(screen.getByRole('table', { name: '分析结果表' })).toHaveTextContent('1,234.50');
+    });
+    it('uses safe fallback for unknown error and renders long text as text', () => {
+        render(<EcommerceResults response={{ state: 'failed', error: { code: 'UNKNOWN' },
+            explanation: { summary: '<script>' + '长'.repeat(10000) } }} />);
+        expect(screen.getByRole('alert')).toHaveTextContent('没有自动重试');
+        expect(document.querySelector('script')).toBeNull();
+    });
+    it('keeps unsaved calculation visible when history recovers as interrupted', async () => {
+        let submitted = false;
+        let requestId = '';
+        mocks.fetch.mockImplementation((url: string, options?: RequestInit) => {
+            if (url.endsWith('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ snapshots: [] }) });
+            if (url.endsWith('/workspace')) return Promise.resolve({ ok: true, json: async () => ({ schema_version: 1,
+                orchestrator: 'v1', nodes: submitted ? [{ node_id: requestId, question: 'x', conditions: {},
+                    status: 'interrupted', result: { state: 'interrupted' } }] : [] }) });
+            submitted = true;
+            requestId = JSON.parse(options!.body as string).request_id;
+            return Promise.resolve({ ok: false, json: async () => ({ state: 'failed', result: success.result,
+                error: { code: 'WORKSPACE_UNAVAILABLE' } }) });
+        });
+        render(<EcommerceWorkspace />);
+        await waitFor(() => expect(screen.getByRole('button', { name: '开始分析' })).not.toBeDisabled());
+        fireEvent.click(screen.getByRole('button', { name: '开始分析' }));
+        expect(await screen.findByText(/保存失败/)).toBeInTheDocument();
+        expect(screen.getByRole('table', { name: '分析结果表' })).toBeInTheDocument();
+    });
+});
+
 describe('verified result presentation', () => {
     it('uses identical group rows for the table and chart, preserving null averages', async () => {
         const response: AnalysisResponse = { state: 'success', result: { state: 'success', values,

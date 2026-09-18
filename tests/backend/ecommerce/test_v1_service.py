@@ -109,3 +109,31 @@ def test_graph_exception_is_saved_as_sanitized_failure(tmp_path, monkeypatch):
     assert response['state'] == 'failed'
     assert 'private' not in str(response)
     assert store.read()['nodes'][0]['result'] == response
+
+
+def test_v2_final_save_failure_keeps_result_and_recovery_never_reexecutes(tmp_path, monkeypatch):
+    store = V1WorkspaceStore(WorkspaceManager(tmp_path / 'workspaces'), 'local:test')
+    body = {'request_id': 'v2-save-fault-001', 'user_question': '分析2018年1月销售额'}
+    calls = []
+    def graph(*args):
+        calls.append(1)
+        return {'status': 'success', 'normalized_conditions': {},
+                'verified_result': {'state': 'success', 'values': {'sales_amount': '30.00'}}}
+    monkeypatch.setattr(v1_service, 'invoke_v1_business_graph', graph)
+    save = store.save_run
+    def broken_save(**kwargs):
+        if kwargs['status'] != 'running':
+            raise OSError('SECRET disk path')
+        return save(**kwargs)
+    monkeypatch.setattr(store, 'save_run', broken_save)
+    response = v1_service.analyze_v1(body, 'local:test', tmp_path, store)
+    assert response['state'] == 'failed'
+    assert response['error']['code'] == 'WORKSPACE_UNAVAILABLE'
+    assert response['result']['values']['sales_amount'] == '30.00'
+    assert 'SECRET' not in str(response)
+    monkeypatch.setattr(store, 'save_run', save)
+    assert v1_service.analyze_v1(body, 'local:test', tmp_path, store)['state'] == 'interrupted'
+    assert calls == [1]
+    next_body = {**body, 'request_id': 'v2-save-next-001'}
+    assert v1_service.analyze_v1(next_body, 'local:test', tmp_path, store)['state'] == 'success'
+    assert calls == [1, 1]

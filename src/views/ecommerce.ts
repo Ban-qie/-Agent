@@ -103,6 +103,7 @@ export function errorMessage(code?: string) {
         ANALYSIS_TIMEOUT: '分析超时，未修改日期或地区条件。',
         PARENT_NOT_FOUND: '父分析节点不可用，请刷新历史或开始独立分析。',
         RESOURCE_LIMIT: '工作区或结果规模达到限制，请检查保存状态。',
+        WORKSPACE_UNAVAILABLE: '保存失败，当前结果尚未可靠保存；请保留本页结果并检查存储。刷新后可能只能恢复中断状态，未自动重试。',
         INVALID_REQUEST: '分析请求无效，请检查问题后重新提交。',
         INVALID_AGENT_OUTPUT: '分析角色返回的内容未通过结构或事实校验，已停止；不会自动重试。',
         CALL_LIMIT: '本次分析已达到模型调用上限，已停止。',

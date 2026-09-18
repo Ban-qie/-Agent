@@ -88,6 +88,16 @@ def test_clarification_stops_before_source_selection_and_execution():
     assert executor.calls == 0
 
 
+def test_v2_top_n_ties_use_stable_region_order():
+    class TiedExecutor:
+        def execute(self, *args):
+            return {'state': 'success', 'values': {'order_count': 3}, 'groups': [
+                {'key': key, 'sales_amount': '10.00', 'order_count': 1} for key in ['SP', 'RJ', 'MG']]}
+    result = invoke_v1_business_graph(_state('分析2018年1月销售额按地区分组销售额最高前2'), TiedExecutor())
+    assert result['status'] == 'success'
+    assert [g['key'] for g in result['verified_result']['groups']] == ['MG', 'RJ']
+
+
 def test_query_validator_rejects_condition_tampering_before_executor():
     executor = FakeExecutor()
 

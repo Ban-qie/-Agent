@@ -109,6 +109,10 @@ class BudgetClient(Client):
     def ping(self, timeout=10):
         raise ToolError("TOOL_NOT_ALLOWED", "Implicit model calls are disabled")
 
+    def _upstream_dispatch(self, **kwargs):
+        from data_formulator.ecommerce.model_transport import dispatch
+        return dispatch(self, **kwargs)
+
     def _dispatch(self, *, messages, stream, params, tools=None, extra=None):
         if self.task_id == "unbound" or self.calls >= self.max_calls:
             raise ToolError("CALL_LIMIT", "Task model-call allowance exhausted")
@@ -138,13 +142,23 @@ class BudgetClient(Client):
                                estimated_cny=(inp * .15 + out * 1.5) / 1e6)
 
         try:
-            response = super()._dispatch(messages=messages, stream=stream, params=options, tools=tools)
+            response = self._upstream_dispatch(messages=messages, stream=stream, params=options, tools=tools)
         except Exception as exc:
             self.ledger.finish(attempt, {"state": "error_or_unknown", "error_type": type(exc).__name__})
+            if isinstance(exc, ToolError) and exc.code == 'ANALYSIS_TIMEOUT':
+                raise
             raise ToolError("MODEL_FAILED", "Accounted model request failed") from None
         if not stream:
-            usage(response)
-            self.ledger.finish(attempt, {**updates, "state": "response_received"})
+            try:
+                usage(response)
+                if time.monotonic() >= self.deadline:
+                    raise ToolError('ANALYSIS_TIMEOUT', 'Task deadline exceeded')
+            except Exception as exc:
+                self.ledger.finish(attempt, {**updates, 'state': 'error_or_unknown'})
+                if isinstance(exc, ToolError):
+                    raise
+                raise ToolError('MODEL_FAILED', 'Invalid model usage') from None
+            self.ledger.finish(attempt, {**updates, "state": "response_received" if updates else 'usage_unknown'})
             return response
 
         def chunks():

@@ -42,5 +42,17 @@ def install_profile(app):
             return error_result("TOOL_NOT_ALLOWED", "This entry is disabled in the restricted ecommerce profile"), 403
         if request.path in ("/api/ecommerce/query", "/api/ecommerce/analyze") and (request.content_length is None or request.content_length > 8192):
             return error_result("RESOURCE_LIMIT", "Query body must have a known size no larger than 8192 bytes"), 413
+        if request.path in ("/api/ecommerce/query", "/api/ecommerce/analyze"):
+            import json
+            try:
+                # WSGI framing remains the server's responsibility. A terminated
+                # stream can expose more bytes than the declared Content-Length.
+                raw = request.stream.read(8193)
+                if len(raw) > 8192:
+                    return error_result('RESOURCE_LIMIT', 'Query body exceeds 8192 bytes'), 413
+                request._cached_data = raw
+                json.loads(raw.decode('utf-8'))
+            except (ValueError, UnicodeError, RecursionError):
+                return error_result('INVALID_REQUEST', 'A bounded UTF-8 JSON request is required'), 400
     # Run before existing authentication/connector middleware can do work.
     app.before_request_funcs[None].insert(0, app.before_request_funcs[None].pop())

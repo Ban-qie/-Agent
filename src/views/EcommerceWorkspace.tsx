@@ -15,7 +15,10 @@ function SalesChart({ rows, plan, measure = 'sales_amount' }: { rows: ResultRow[
         let disposed = false;
         let view: Awaited<ReturnType<typeof embed>> | undefined;
         setError(false);
-        embed(host.current, plan ? plannedSpec(rows, plan, measure) : salesSpec(rows), { actions: false, renderer: 'svg' }).then(result => {
+        const element = host.current;
+        Promise.resolve().then(() => disposed ? undefined : embed(element,
+            plan ? plannedSpec(rows, plan, measure) : salesSpec(rows), { actions: false, renderer: 'svg' })).then(result => {
+            if (!result) return;
             if (disposed) result.finalize(); else view = result;
         }).catch(() => { if (!disposed) setError(true); });
         return () => { disposed = true; view?.finalize(); };
@@ -39,14 +42,36 @@ function Summary({ title, result }: { title: string; result: MetricResult }) {
     </Paper>;
 }
 
+class ResultBoundary extends React.Component<{ response: AnalysisResponse; children: React.ReactNode },
+    { failed: boolean; response: AnalysisResponse }> {
+    state = { failed: false, response: this.props.response };
+    static getDerivedStateFromError() { return { failed: true }; }
+    static getDerivedStateFromProps(props: { response: AnalysisResponse }, state: { response: AnalysisResponse }) {
+        return props.response !== state.response ? { failed: false, response: props.response } : null;
+    }
+    render() {
+        return this.state.failed ? <Alert severity="warning">结果数据不完整，无法展示；请检查保存记录或服务状态，未自动重新分析。</Alert> : this.props.children;
+    }
+}
+
 export function EcommerceResults({ response }: { response: AnalysisResponse }) {
+    if (!['success', 'empty_result', 'outside_coverage', 'failed', 'partial', 'clarification_required', 'running', 'interrupted'].includes(response?.state)) {
+        return <Alert severity="warning">未知分析状态，请检查保存记录或服务状态，未自动重新分析。</Alert>;
+    }
+    if (['success', 'partial'].includes(response.state) && !response.result) {
+        return <Alert severity="warning">结果数据不完整，请检查保存记录；未自动重新分析。</Alert>;
+    }
+    return <ResultBoundary response={response}><ResultContent response={response} /></ResultBoundary>;
+}
+
+function ResultContent({ response }: { response: AnalysisResponse }) {
     const failed = response.state === 'failed';
     const result = failed ? response.partial_result || (response.result?.state !== 'failed' ? response.result : undefined) : response.result;
     const conditions = response.conditions?.current ? { ...result?.conditions, ...response.conditions } : result?.conditions;
     const rows = useMemo(() => result ? resultRows(result) : [], [result]);
     const periods = result?.current ? [result.current, result.baseline!] : result ? [result] : [];
     const truncated = periods.some(period => period.truncated);
-    return <Stack spacing={2} aria-live="polite">
+    return <Stack spacing={2} aria-live="polite" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
         {response.state === 'clarification_required' && <Alert severity="info">需要澄清：{response.question}</Alert>}
         {response.state === 'running' && <Alert severity="info">任务仍在运行。刷新状态只读取记录，不会重新执行。</Alert>}
         {response.state === 'interrupted' && <Alert severity="warning">任务已中断，未自动重新执行。请检查服务与费用记录，确认后可发起新请求。</Alert>}
@@ -185,7 +210,7 @@ export function EcommerceWorkspace() {
             const savedNodes = workspaceNodes(state);
             setNodes(savedNodes); setRestoreError(false);
             const node = savedNodes.find(n => n.request_id === last.current?.id);
-            if (node) selectNode(node);
+            if (node && data.error?.code !== 'WORKSPACE_UNAVAILABLE') selectNode(node);
         } catch { setNetworkError(true); }
         finally { clearTimeout(timeout); pending.current = false; setBusy(false); }
     };
