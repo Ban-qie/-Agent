@@ -176,23 +176,30 @@ V1_ROLE_SPECS = (
         deterministic=False,
         input_keys=("user_question", "snapshot_id", "metric_version", "parent_node_id"),
         output_keys=("normalized_conditions", "plan"),
-        max_attempts=2,
+        max_attempts=1,
         can_modify_conditions=True,
+    ),
+    AgentRoleSpec(
+        "reviewer",
+        "Independently verify original intent against the proposed plan; veto before execution.",
+        deterministic=False,
+        input_keys=("user_question", "normalized_conditions", "plan"),
+        output_keys=("plan", "status", "error"),
     ),
     AgentRoleSpec(
         "source_selector",
         "Select the fixed order-grain source and confirmed relationship metadata.",
-        deterministic=False,
+        deterministic=True,
         input_keys=("normalized_conditions", "plan"),
         output_keys=("selected_sources",),
     ),
     AgentRoleSpec(
         "query_generator",
         "Produce a structured query request without widening conditions.",
-        deterministic=False,
+        deterministic=True,
         input_keys=("normalized_conditions", "selected_sources", "plan"),
         output_keys=("query",),
-        max_attempts=2,
+        max_attempts=1,
     ),
     AgentRoleSpec(
         "query_validator",
@@ -220,14 +227,15 @@ V1_ROLE_SPECS = (
     AgentRoleSpec(
         "chart_planner",
         "Choose a chart specification from verified result dimensions and measures.",
-        deterministic=False,
+        deterministic=True,
         input_keys=("verified_result", "normalized_conditions"),
         output_keys=("chart_spec",),
     ),
 )
 
 V1_HANDOFFS = (
-    NodeHandoff("planner", "source_selector", ("normalized_conditions", "plan")),
+    NodeHandoff("planner", "reviewer", ("normalized_conditions", "plan")),
+    NodeHandoff("reviewer", "source_selector", ("normalized_conditions", "plan")),
     NodeHandoff("source_selector", "query_generator", ("selected_sources",)),
     NodeHandoff("query_generator", "query_validator", ("query",)),
     NodeHandoff("query_validator", "executor", ("query",)),

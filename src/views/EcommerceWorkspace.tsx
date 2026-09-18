@@ -53,6 +53,10 @@ export function EcommerceResults({ response }: { response: AnalysisResponse }) {
         {response.state === 'partial' && <Alert severity="warning">以下仅为已验证的部分结果，分析尚未全部完成。</Alert>}
         {failed && <Alert severity="error">{errorMessage(response.error?.code || response.result?.error?.code)}{result && ' 以下仅为已验证的部分结果，分析闭环未完成。'}</Alert>}
         {response.explanation?.summary && <Typography variant="body2">{response.explanation.summary}</Typography>}
+        {response.collaboration?.planner && <Typography variant="caption" color="text.secondary">
+            分析规划已完成{response.collaboration.reviewer ? response.collaboration.review === 'approve' ? ' · 条件复核通过' : ' · 条件需澄清' : ''}
+            {response.collaboration.interpreter ? ' · 已依据核验结果整理说明' : ''}
+        </Typography>}
         {conditions && <Paper variant="outlined" sx={{ p: 2 }}>
             <Typography variant="subtitle2">本次分析条件</Typography>
             <Typography variant="body2">当前期：{periodLabel(conditions.current)}</Typography>

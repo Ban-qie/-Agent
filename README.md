@@ -1,6 +1,6 @@
 # 电商运营数据分析 Agent · V1
 
-基于 Microsoft Data Formulator `0.8b1`，在 V0 单 AnalystAgent 基线上新增 LangGraph 业务图、条件继承、父分支、排名与恢复。当前 V1 的七个业务节点是确定性处理器，不调用模型；V0 的 Qwen 路径仍为默认且可回退。只开放本机单用户、固定电商快照和受限只读工具。
+基于 Microsoft Data Formulator `0.8b1`，在 V0 单 AnalystAgent 基线上新增 LangGraph 业务图、条件继承、父分支、排名与恢复。当前 V1 由 Qwen Planner、独立 Reviewer、证据 Interpreter 三个 Agent 经 LangGraph 协作，受限工具由程序执行；V0 的 Qwen 路径仍为默认且可回退。只开放本机单用户、固定电商快照和受限只读工具。
 
 - [V1 启动、操作、恢复与回退](docs/ECOMMERCE_V1.md)
 - [V1 本地版本说明与验证范围](docs/RELEASE_V1.md)
@@ -11,12 +11,12 @@
 
 ```powershell
 $env:ECOMMERCE_ANALYSIS_ORCHESTRATOR = 'v1'
-.\.venv\Scripts\python.exe -m devtools.run_ecommerce
+.\.venv\Scripts\python.exe -m devtools.run_ecommerce --qwen
 ```
 
-打开 http://127.0.0.1:5567，Ctrl+C 停止。切回 V0 前停止服务并设置环境变量为 `v0`。启动器不读取 dotenv。新机器先按运行指南准备锁定依赖、前端构建和合法取得的 Olist 数据；源码不包含数据、工作区、密钥或费用账目。V1 可离线执行分析；V0 付费分析仍需自己的 Qwen 密钥和完整有效账目。
+打开 http://127.0.0.1:5567，Ctrl+C 停止。切回 V0 前停止服务并设置环境变量为 `v0`。启动器不读取 dotenv。新机器先按运行指南准备锁定依赖、前端构建和合法取得的 Olist 数据；源码不包含数据、工作区、密钥或费用账目。V1 新分析需 --qwen、服务端密钥及完整费用账目；不带 --qwen 只恢复历史，新任务明确提示模型未启用。
 
-V1-15 已通过相关后端 264 项、前端 15 项及浏览器/独立复算验收；本地固化阶段不重复这些测试。`v0.2.0` 是 V1 本地源码标签，`v0.1.0` 是 V0 回退基线。当前未推送 V1、未发布安装包或公网服务。
+此前 V1-15 验收属于确定性版本；当前三 Agent 补全验收见 [协作说明](docs/V1_MODEL_TEAM.md)。`v0.2.0` 保留为旧确定性 V1 本地基线，当前协作版通过后续提交保存；`v0.1.0` 是 V0 回退基线。当前未推送 V1、未发布安装包或公网服务。
 
 ---
 

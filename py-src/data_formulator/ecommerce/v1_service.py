@@ -9,7 +9,7 @@ from typing import Any
 from data_formulator.ecommerce.contracts import ToolError, error_result
 from data_formulator.ecommerce.executor import MetricExecutor, SNAPSHOT_ID
 from data_formulator.ecommerce.metrics import METRIC_VERSION
-from data_formulator.ecommerce.v1_graph import invoke_v1_business_graph
+from data_formulator.ecommerce.v1_agents import invoke_v1_agent_graph as invoke_v1_business_graph
 
 
 def analyze_v1(body: Any, identity: str, audit_directory: Path, workspace=None) -> dict[str, Any]:
@@ -66,13 +66,16 @@ def _run(body, identity, audit_directory, workspace):
         result = invoke_v1_business_graph(
             state, MetricExecutor(Path(audit_directory) / "execution-audit.json"), identity
         )
-    except Exception:
+    except Exception as exc:
         result = {"status": "failed", "normalized_conditions": inherited,
-                  "error": {"code": "ANALYSIS_FAILED", "message": "V1 analysis could not complete"}}
+                  "error": {"code": exc.code if isinstance(exc, ToolError) else "ANALYSIS_FAILED", "message": "V1 analysis could not complete"}}
     status = result.get("status", "failed")
     if status == "waiting_clarification":
         response = {"state": "clarification_required", "question": (result.get("error") or {}).get("message"),
                 "executed": False, "trace": result.get("trace", [])}
+        if result.get('budget'):
+            response['budget'] = result['budget']
+            response['collaboration'] = (result.get('plan') or {}).get('collaboration', {})
         if workspace is not None:
             workspace.save_run(node_id=request_id, parent_node_id=parent_node_id, question=question,
                                conditions=result.get("normalized_conditions") or {}, status="waiting_clarification",
@@ -86,6 +89,8 @@ def _run(body, identity, audit_directory, workspace):
         "explanation": result.get("explanation"),
         "chart_spec": result.get("chart_spec"),
         "trace": result.get("trace", []),
+        "collaboration": result.get('plan', {}).get('collaboration', {}) if result.get('plan') else {},
+        "budget": result.get('budget', {}),
     }
     if result.get("error"):
         response["error"] = result["error"]

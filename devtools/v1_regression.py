@@ -5,7 +5,7 @@ import uuid
 from devtools.run_local import configure_offline, ROOT
 
 
-def main():
+def main(stage='V1-15'):
     configure_offline()
     import pytest
     class Evidence:
@@ -22,12 +22,15 @@ def main():
         'tests/backend/routes/test_list_global_models_api.py', 'tests/backend/data/test_workspace_manager.py',
         'tests/backend/agents/test_analyst_scratch_files.py', '-q', '-p', 'no:cacheprovider',
         '--basetemp', str(ROOT / '.local' / ('pytest-' + uuid.uuid4().hex))], plugins=[evidence])
-    report = {'stage': 'V1-15', 'exit_code': int(status), 'seconds': round(time.monotonic() - start, 3),
+    report = {'stage': stage, 'exit_code': int(status), 'seconds': round(time.monotonic() - start, 3),
               'passed': sum(t['outcome'] == 'passed' for t in evidence.tests),
               'failed': sum(t['outcome'] == 'failed' for t in evidence.tests), 'tests': evidence.tests}
-    (ROOT / 'docs/verification/V1-15-regression.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+    (ROOT / f'docs/verification/{stage}-regression.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
     return status
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--stage', choices=['V1-15', 'V1-team'], default='V1-15')
+    raise SystemExit(main(parser.parse_args().stage))

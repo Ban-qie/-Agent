@@ -18,6 +18,8 @@ export interface AnalysisResponse {
     result?: MetricResult; partial_result?: MetricResult; error?: { code: string };
     limitations?: string[]; agent_completed?: boolean;
     explanation?: { summary?: string }; chart_spec?: ChartPlan;
+    collaboration?: { planner?: string; reviewer?: string; review?: string; interpreter?: string };
+    budget?: { model_calls?: number; max_model_calls?: number };
 }
 export interface ChartPlan { type: 'table' | 'bar' | 'line'; dimension?: string; measures?: (keyof Values)[]; source?: string }
 export interface AnalysisNode {
@@ -102,6 +104,8 @@ export function errorMessage(code?: string) {
         PARENT_NOT_FOUND: '父分析节点不可用，请刷新历史或开始独立分析。',
         RESOURCE_LIMIT: '工作区或结果规模达到限制，请检查保存状态。',
         INVALID_REQUEST: '分析请求无效，请检查问题后重新提交。',
+        INVALID_AGENT_OUTPUT: '分析角色返回的内容未通过结构或事实校验，已停止；不会自动重试。',
+        CALL_LIMIT: '本次分析已达到模型调用上限，已停止。',
     };
     return messages[code || ''] || '分析未完成。请检查输入条件或服务状态；没有自动重试。';
 }

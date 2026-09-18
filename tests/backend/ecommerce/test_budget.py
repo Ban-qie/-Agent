@@ -114,3 +114,23 @@ def test_running_task_is_not_restarted(tmp_path):
     with pytest.raises(ToolError) as exc:
         analyze(body, "local:tester", tmp_path, lambda key: pytest.fail("model restarted"))
     assert exc.value.code == "INTERRUPTED"
+
+
+def test_team_shares_three_call_limit_without_changing_v0(ledger, monkeypatch):
+    from data_formulator.agents.client_utils import Client
+    from data_formulator.ecommerce.v1_agents import QwenTeam
+    monkeypatch.setattr(Client, '_dispatch', lambda *args, **kwargs:
+        NS(usage=NS(prompt_tokens=100, completion_tokens=10),
+           choices=[NS(message=NS(content='{}'))]))
+    class TeamBudget(BudgetClient):
+        max_calls = 3
+    client = TeamBudget('openai', 'qwen-flash')
+    client.task_id, client.ledger = 'v1-team:test-limit', ledger
+    team = QwenTeam('test-limit', client)
+    for role in ['planner', 'reviewer', 'interpreter']:
+        team.ask(role, 'system', {})
+    with pytest.raises(ToolError) as exc:
+        team.ask('planner', 'system', {})
+    assert exc.value.code == 'CALL_LIMIT'
+    assert len(ledger.read()) == 8 and ledger.read()[-1]['stage'] == 'V1-team'
+    assert BudgetClient.max_calls == 2

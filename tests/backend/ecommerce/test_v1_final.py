@@ -140,6 +140,10 @@ def test_v1_http_guards_and_failures_preserve_conditions_and_replay(tmp_path, mo
             calls.append(request)
             raise ToolError('EXECUTION_TIMEOUT', 'timeout')
     monkeypatch.setattr(v1_service, 'MetricExecutor', lambda _: Executor())
+    from data_formulator.ecommerce.v1_agents import QwenTeam
+    monkeypatch.setattr(QwenTeam, 'ask', lambda self, role, prompt, payload:
+        {'action': 'analyze', 'canonical_question': '分析2018年1月销售额地区SP', 'question': ''}
+        if role == 'planner' else {'decision': 'approve', 'question': ''})
     client = app.test_client()
     for route, method, headers in [('/api/ecommerce/workspace', 'GET', {'Origin': 'https://foreign.example'}),
         ('/api/ecommerce/workspace', 'GET', {'Host': 'foreign.example:5567'}),

@@ -1,9 +1,7 @@
-"""LangGraph skeleton for the V1 ecommerce path.
+"""One LangGraph for bounded V1 agents and deterministic tools.
 
-The graph is intentionally a wiring layer at this stage.  Real condition
-normalization, query generation, validation, and execution handlers are
-injected by later V1 stages.  The default nodes only record traversal and
-never claim a business result.
+The production service injects planner/reviewer/interpreter model agents.
+The deterministic handler factory remains an explicit offline test baseline.
 """
 from __future__ import annotations
 
@@ -45,6 +43,7 @@ class GraphState(TypedDict, total=False):
 Handler = Callable[[dict[str, Any]], Mapping[str, Any]]
 _STAGES = (
     "planner",
+    "reviewer",
     "source_selector",
     "query_generator",
     "query_validator",
@@ -70,10 +69,11 @@ def _invoke(stage: str, state: dict[str, Any], handlers: Mapping[str, Handler]) 
         return _record(stage, state)
     try:
         updates = dict(handlers[stage](dict(state))) if stage in handlers else {}
-    except Exception:
+    except Exception as exc:
         # Keep verified_result already in graph state when interpretation or
         # chart planning fails. Never expose arbitrary exception text.
-        updates = {"status": "failed", "error": {"code": "ANALYSIS_FAILED", "message": "V1 node failed"}}
+        from data_formulator.ecommerce.contracts import ToolError
+        updates = {"status": "failed", "error": {"code": exc.code if isinstance(exc, ToolError) else "ANALYSIS_FAILED", "message": "V1 node failed"}}
     unknown = set(updates) - _STATE_KEYS
     if unknown:
         raise ValueError(f"{stage} returned unknown state fields: {sorted(unknown)}")
@@ -96,7 +96,7 @@ def v1_default_handlers() -> dict[str, Handler]:
 
 
 def _route_after_planner(state: GraphState) -> str:
-    if state.get("status") == "waiting_clarification":
+    if state.get("status") in {"waiting_clarification", "failed", "interrupted"}:
         return "end"
     return "source_selector"
 
@@ -126,11 +126,15 @@ def build_v1_graph(handlers: Mapping[str, Handler] | None = None):
         raise ValueError(f"unknown V1 graph handlers: {sorted(unknown)}")
 
     graph = StateGraph(GraphState)
-    for stage in _STAGES:
+    stages = _STAGES if 'reviewer' in node_handlers else tuple(s for s in _STAGES if s != 'reviewer')
+    for stage in stages:
         graph.add_node(stage, lambda state, stage=stage: _invoke(stage, state, node_handlers))
     graph.add_edge(START, "planner")
     graph.add_conditional_edges("planner", _route_after_planner,
-                                {"source_selector": "source_selector", "end": END})
+                                {"source_selector": "reviewer" if 'reviewer' in node_handlers else "source_selector", "end": END})
+    if 'reviewer' in node_handlers:
+        graph.add_conditional_edges('reviewer', _route_after_planner,
+                                    {'source_selector': 'source_selector', 'end': END})
     graph.add_edge("source_selector", "query_generator")
     graph.add_edge("query_generator", "query_validator")
     graph.add_conditional_edges("query_validator", _route_after_validator,

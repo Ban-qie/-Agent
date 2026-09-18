@@ -74,7 +74,7 @@ class UsageLedger:
             spent = sum(max(row["reserved_cny"], row.get("estimated_cny", 0)) for row in rows)
             if spent + RESERVE_CNY > TOTAL_CNY:
                 raise ToolError("BUDGET_EXHAUSTED", "Cumulative project model budget exhausted")
-            row = {"attempt": len(rows) + 1, "task_id": task_id, "stage": "V0-6",
+            row = {"attempt": len(rows) + 1, "task_id": task_id, "stage": "V1-team" if task_id.startswith('v1-team:') else "V0-6",
                    "utc": datetime.now(timezone.utc).isoformat(), "state": "reserved",
                    "reserved_cny": RESERVE_CNY}
             rows.append(row)
@@ -90,6 +90,7 @@ class UsageLedger:
 
 class BudgetClient(Client):
     """No ping, implicit retry or unaccounted completion; exactly one task/client."""
+    max_calls = MAX_CALLS
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ledger = UsageLedger()
@@ -109,7 +110,7 @@ class BudgetClient(Client):
         raise ToolError("TOOL_NOT_ALLOWED", "Implicit model calls are disabled")
 
     def _dispatch(self, *, messages, stream, params, tools=None, extra=None):
-        if self.task_id == "unbound" or self.calls >= MAX_CALLS:
+        if self.task_id == "unbound" or self.calls >= self.max_calls:
             raise ToolError("CALL_LIMIT", "Task model-call allowance exhausted")
         remaining = self.deadline - time.monotonic()
         if remaining <= 0:
@@ -172,7 +173,7 @@ class BudgetClient(Client):
         return chunks()
 
 
-def configured_client(task_id):
+def configured_client(task_id, client_class=BudgetClient):
     import os
     if os.environ.get("QWEN_ENABLED", "false").lower() != "true":
         raise ToolError("MODEL_DISABLED", "Enable the server-side Qwen configuration explicitly")
@@ -180,6 +181,6 @@ def configured_client(task_id):
     config = ModelRegistry().get_config("global-qwen-qwen-flash")
     if not config or config.get("model") != "qwen-flash" or config.get("endpoint") != "openai" or config.get("api_base") != "https://dashscope.aliyuncs.com/compatible-mode/v1":
         raise ToolError("MODEL_DISABLED", "Approved server-side model configuration is unavailable")
-    client = BudgetClient.from_config(config)
+    client = client_class.from_config(config)
     client.task_id = task_id
     return client
