@@ -14,6 +14,28 @@ def deny_free_code():
 def install_profile(app):
     from flask import request
     from data_formulator.ecommerce.contracts import error_result
+    if app.config.get('ECOMMERCE_PROFILE') == 'multiuser':
+        # App-scoped, fail-closed entry. No wildcard auth or upstream routes.
+        allowed_multiuser = {
+            ('GET', '/api/ecommerce/auth/status'),
+            ('POST', '/api/ecommerce/auth/login'),
+            ('POST', '/api/ecommerce/auth/logout'),
+        }
+        @app.before_request
+        def multiuser_guard():
+            if 'v3_accounts' not in app.extensions:
+                return error_result('AUTH_UNAVAILABLE', 'Authentication unavailable'), 503
+            allowed = allowed_multiuser | ({('GET', '/api/ecommerce/workspace'), ('POST', '/api/ecommerce/analyze'),
+                                            ('GET', '/api/ecommerce/catalog')}
+                                          if 'v3_service' in app.extensions else set())
+            if hasattr(app.extensions.get('v3_service'), 'submit'):
+                import re
+                if ((request.method == 'GET' and re.fullmatch(r'/api/ecommerce/tasks/[a-f0-9]{32}', request.path))
+                        or (request.method == 'POST' and re.fullmatch(r'/api/ecommerce/tasks/[a-f0-9]{32}/cancel', request.path))):
+                    return None
+            if request.path.startswith('/api/') and (request.method, request.path) not in allowed:
+                return error_result('TOOL_NOT_ALLOWED', 'Entry not enabled'), 403
+        return
     # Diagnostics, fixed queries and the constrained Analyst path only.
     # The legacy UI execution APIs remain disabled until its V0-7 adaptation.
     allowed = {

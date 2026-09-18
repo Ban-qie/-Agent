@@ -210,7 +210,7 @@ def verified_facts(result: dict[str, Any]):
     return facts
 
 
-def invoke_v1_agent_graph(initial_state, executor, identity='local:v1', client=None):
+def invoke_v1_agent_graph(initial_state, executor, identity='local:v1', client=None, checkpoint=None):
     from data_formulator.ecommerce.v1_graph import invoke_v1_graph
     from data_formulator.ecommerce.v1_runtime import business_handlers
     team = QwenTeam(initial_state['run_id'], client)
@@ -222,6 +222,13 @@ def invoke_v1_agent_graph(initial_state, executor, identity='local:v1', client=N
             raise ToolError('ANALYSIS_TIMEOUT', 'Insufficient task time for the fixed worker')
         return execute(state)
     handlers['executor'] = bounded_execute
+    if checkpoint is not None:
+        def checked(handler):
+            def run(state):
+                checkpoint()
+                return handler(state)
+            return run
+        handlers = {stage: checked(handler) for stage, handler in handlers.items()}
     result = invoke_v1_graph(initial_state, handlers, config={'recursion_limit': 16})
     result['budget'] = {'model_calls': team.calls, 'max_model_calls': 3, 'automatic_retries': 0}
     return result

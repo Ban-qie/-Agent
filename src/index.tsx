@@ -13,13 +13,14 @@ import { AppFC } from './app/App';
 
 import { PersistGate } from 'redux-persist/integration/react'
 import { createRoot } from 'react-dom/client';
+import { MultiuserWorkspace } from './views/MultiuserWorkspace';
 
 
 const domNode = document.getElementById('root') as HTMLElement;
 const root = createRoot(domNode);
 
 
-root.render(<React.StrictMode>
+root.render(window.location.pathname === '/multiuser' ? <MultiuserWorkspace /> : <React.StrictMode>
         <Provider store={store}>
             <PersistGate loading={null} persistor={persistor}>
                 <AppFC />

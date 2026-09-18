@@ -70,6 +70,8 @@ class UsageLedger:
 
     def reserve(self, task_id):
         with exclusive(self.path):
+            if self.path.with_suffix('.migrated').exists():
+                raise ToolError('BUDGET_UNAVAILABLE', 'Ledger migrated; legacy writes are disabled')
             rows = self.read()
             spent = sum(max(row["reserved_cny"], row.get("estimated_cny", 0)) for row in rows)
             if spent + RESERVE_CNY > TOTAL_CNY:
@@ -83,6 +85,8 @@ class UsageLedger:
 
     def finish(self, attempt, updates):
         with exclusive(self.path):
+            if self.path.with_suffix('.migrated').exists():
+                raise ToolError('BUDGET_UNAVAILABLE', 'Ledger migrated; legacy writes are disabled')
             rows = self.read()
             rows[attempt - 1].update(updates)
             save_json(self.path, rows)

@@ -37,7 +37,7 @@ def worker_environment():
     return env
 
 
-def run_worker(request, source, timeout=WORKER_TIMEOUT):
+def run_worker(request, source, timeout=WORKER_TIMEOUT, checkpoint=None):
     process = subprocess.Popen([sys.executable, "-I", "-m", "data_formulator.ecommerce.worker"],
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                env=worker_environment(), creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -45,7 +45,11 @@ def run_worker(request, source, timeout=WORKER_TIMEOUT):
     try:
         close_job = constrain_process(process)
         wire = json.dumps({"request": request.payload(), "source": source}).encode()
-        output, _ = process.communicate(wire, timeout=timeout)
+        if checkpoint is None:
+            output, _ = process.communicate(wire, timeout=timeout)
+        else:
+            from data_formulator.ecommerce.process_wait import communicate
+            output, _ = communicate(process, wire, time.monotonic() + timeout, checkpoint)
         if process.returncode != 0:
             return error_result("EXECUTION_FAILED", "Worker failed or hit a resource limit")
         if len(output) > 128 * 1024:
@@ -60,17 +64,26 @@ def run_worker(request, source, timeout=WORKER_TIMEOUT):
             process.kill()
         if close_job:
             close_job()
-        process.communicate()
+        process.communicate(timeout=2)
 
 
 class MetricExecutor:
-    def __init__(self, audit_path: Path, catalog=None):
+    def __init__(self, audit_path: Path, catalog=None, *, context=None):
         self.audit_path = Path(audit_path)
         self.catalog = accepted_catalog() if catalog is None else catalog
+        self.context = context
+        if context is not None:
+            from data_formulator.ecommerce.execution_context import ExecutionContext
+            if not isinstance(context, ExecutionContext):
+                raise ToolError('ACCESS_DENIED', 'Verified execution context required')
+            scope = hashlib.sha256((context.principal.owner + '\0' + context.workspace).encode()).hexdigest()
+            self.audit_path = self.audit_path.parent / scope / self.audit_path.name
 
     def execute(self, identity: str, request):
         request = parse_request(request.payload())
-        if not isinstance(identity, str) or not identity.startswith("local:"):
+        if self.context is not None:
+            identity = self.context.check(identity, request)
+        elif not isinstance(identity, str) or not identity.startswith("local:"):
             raise ToolError("ACCESS_DENIED", "Only authenticated local mode is supported in V0")
         if request.snapshot_id not in self.catalog:
             raise ToolError("SOURCE_NOT_ALLOWED", "Snapshot is not in the accepted server catalog")
@@ -101,7 +114,10 @@ class MetricExecutor:
                 temp.replace(self.audit_path)
             records[key] = {"fingerprint": fingerprint, "status": "running", "started_epoch": time.time()}
             save()
-            result = run_worker(request, self.catalog[request.snapshot_id])
+            if self.context is not None and self.context.checkpoint is not None:
+                result = run_worker(request, self.catalog[request.snapshot_id], checkpoint=self.context.checkpoint)
+            else:
+                result = run_worker(request, self.catalog[request.snapshot_id])
             records[key].update(status="completed", result=result)
             save()
             return result

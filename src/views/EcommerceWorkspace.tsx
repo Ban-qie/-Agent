@@ -55,6 +55,7 @@ class ResultBoundary extends React.Component<{ response: AnalysisResponse; child
 }
 
 export function EcommerceResults({ response }: { response: AnalysisResponse }) {
+    if (response?.state === 'cancelled') return <Alert severity="info">任务已取消，已发出请求的费用仍保留，未自动重试。</Alert>;
     if (!['success', 'empty_result', 'outside_coverage', 'failed', 'partial', 'clarification_required', 'running', 'interrupted'].includes(response?.state)) {
         return <Alert severity="warning">未知分析状态，请检查保存记录或服务状态，未自动重新分析。</Alert>;
     }
@@ -133,7 +134,7 @@ function ResultContent({ response }: { response: AnalysisResponse }) {
     </Stack>;
 }
 
-export function EcommerceWorkspace() {
+export function EcommerceWorkspace({ request = fetchWithIdentity }: { request?: typeof fetchWithIdentity } = {}) {
     const [question, setQuestion] = useState(examples[0]);
     const [response, setResponse] = useState<AnalysisResponse>();
     const [busy, setBusy] = useState(false);
@@ -155,7 +156,7 @@ export function EcommerceWorkspace() {
     };
     const loadWorkspace = async (restore = false) => {
         const selectedId = last.current?.id;
-        const res = await fetchWithIdentity('/api/ecommerce/workspace');
+        const res = await request('/api/ecommerce/workspace');
         if (!res.ok) throw new Error();
         const state = await res.json();
         const savedNodes = workspaceNodes(state);
@@ -165,7 +166,7 @@ export function EcommerceWorkspace() {
     };
     useEffect(() => {
         let active = true;
-        fetchWithIdentity('/api/ecommerce/catalog').then(async res => {
+        request('/api/ecommerce/catalog').then(async res => {
             if (!res.ok) throw new Error();
             const data = await res.json();
             if (active) setCatalog(data);
@@ -174,7 +175,7 @@ export function EcommerceWorkspace() {
     }, []);
     useEffect(() => {
         let active = true;
-        fetchWithIdentity('/api/ecommerce/workspace').then(async res => {
+        request('/api/ecommerce/workspace').then(async res => {
             if (!res.ok) throw new Error();
             const state = await res.json();
             const savedNodes = workspaceNodes(state);
@@ -197,14 +198,14 @@ export function EcommerceWorkspace() {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 90000);
         try {
-            const res = await fetchWithIdentity('/api/ecommerce/analyze', { method: 'POST',
+            const res = await request('/api/ecommerce/analyze', { method: 'POST',
                 headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
                 body: JSON.stringify({ request_id: last.current!.id, user_question: question,
                     ...(v1 && last.current!.parentId ? { parent_node_id: last.current!.parentId } : {}) }) });
             const data = await res.json();
-            if (!['success', 'empty_result', 'outside_coverage', 'failed', 'partial', 'clarification_required', 'running', 'interrupted'].includes(data.state)) throw new Error();
+            if (!['success', 'empty_result', 'outside_coverage', 'failed', 'partial', 'clarification_required', 'running', 'interrupted', 'cancelled'].includes(data.state)) throw new Error();
             setResponse(data);
-            const saved = await fetchWithIdentity('/api/ecommerce/workspace');
+            const saved = await request('/api/ecommerce/workspace');
             if (!saved.ok) throw new Error();
             const state = await saved.json();
             const savedNodes = workspaceNodes(state);

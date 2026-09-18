@@ -21,6 +21,18 @@ export interface AnalysisResponse {
     collaboration?: { planner?: string; reviewer?: string; review?: string; interpreter?: string };
     budget?: { model_calls?: number; max_model_calls?: number };
 }
+export type TaskStatus = 'accepted' | 'running' | 'success' | 'empty_result' | 'waiting_clarification' |
+    'failed' | 'cancelled' | 'interrupted';
+export interface TaskResponse {
+    task_id: string; request_id: string; status: TaskStatus; cancel_requested: boolean;
+    response?: AnalysisResponse;
+}
+export interface PasswordSession {
+    authenticated: boolean; csrf_token: string; user_id?: string; username?: string;
+}
+export const taskLabels: Record<TaskStatus, string> = { accepted: '已接收', running: '运行中', success: '完成',
+    empty_result: '空结果', waiting_clarification: '待澄清', failed: '失败', cancelled: '已取消', interrupted: '已中断' };
+export const taskFinished = (task: TaskResponse) => !['accepted', 'running'].includes(task.status);
 export interface ChartPlan { type: 'table' | 'bar' | 'line'; dimension?: string; measures?: (keyof Values)[]; source?: string }
 export interface AnalysisNode {
     node_id: string; request_id: string; user_question: string; response: AnalysisResponse;
@@ -107,6 +119,12 @@ export function errorMessage(code?: string) {
         INVALID_REQUEST: '分析请求无效，请检查问题后重新提交。',
         INVALID_AGENT_OUTPUT: '分析角色返回的内容未通过结构或事实校验，已停止；不会自动重试。',
         CALL_LIMIT: '本次分析已达到模型调用上限，已停止。',
+        AUTH_REQUIRED: '登录已失效，请重新登录。',
+        LOGIN_REJECTED: '账号或密码不正确。',
+        CSRF_REJECTED: '会话已变化，请刷新后重试。',
+        ACCESS_DENIED: '无权访问此资源。',
+        NOT_FOUND: '资源不存在或不可访问。',
+        RATE_LIMIT: '请求过于频繁，请稍后重试。',
     };
     return messages[code || ''] || '分析未完成。请检查输入条件或服务状态；没有自动重试。';
 }

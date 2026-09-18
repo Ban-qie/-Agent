@@ -31,7 +31,7 @@ def validate_analyze_request(body: Any) -> None:
         raise ToolError("INVALID_REQUEST", "Invalid parent_node_id")
 
 
-def analyze_v1(body: Any, identity: str, audit_directory: Path, workspace=None) -> dict[str, Any]:
+def analyze_v1(body: Any, identity: str, audit_directory: Path, workspace=None, *, executor=None, client=None, checkpoint=None) -> dict[str, Any]:
     validate_analyze_request(body)
     request_id = body['request_id']
     if body.get('parent_node_id') and workspace is None:
@@ -39,10 +39,10 @@ def analyze_v1(body: Any, identity: str, audit_directory: Path, workspace=None) 
     if workspace is not None:
         workspace.read()  # Resolve abandoned runs before acquiring this run's lease.
     with workspace.task_lease(request_id) if workspace is not None else nullcontext():
-        return _run(body, identity, audit_directory, workspace)
+        return _run(body, identity, audit_directory, workspace, executor=executor, client=client, checkpoint=checkpoint)
 
 
-def _run(body, identity, audit_directory, workspace):
+def _run(body, identity, audit_directory, workspace, *, executor=None, client=None, checkpoint=None):
     request_id, question = body["request_id"], body["user_question"]
     parent_node_id = body.get("parent_node_id")
     inherited = workspace.parent_conditions(parent_node_id) if parent_node_id and workspace is not None else None
@@ -72,9 +72,13 @@ def _run(body, identity, audit_directory, workspace):
         workspace.save_run(node_id=request_id, parent_node_id=parent_node_id, question=question,
                            conditions=dict(inherited or {}), status="running")
     try:
-        result = invoke_v1_business_graph(
-            state, MetricExecutor(Path(audit_directory) / "execution-audit.json"), identity
-        )
+        selected_executor = executor if executor is not None else MetricExecutor(Path(audit_directory) / 'execution-audit.json')
+        options = {}
+        if client is not None:
+            options['client'] = client
+        if checkpoint is not None:
+            options['checkpoint'] = checkpoint
+        result = invoke_v1_business_graph(state, selected_executor, identity, **options)
     except Exception as exc:
         result = {"status": "failed", "normalized_conditions": inherited,
                   "error": {"code": exc.code if isinstance(exc, ToolError) else "ANALYSIS_FAILED", "message": "V1 analysis could not complete"}}

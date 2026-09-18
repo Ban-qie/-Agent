@@ -29,7 +29,11 @@ def dispatch(client, *, messages, stream, params, tools=None):
     try:
         close_job = constrain_process(process)
         # No request bytes (including credentials) are sent until limits exist.
-        output, _ = process.communicate(payload, timeout=max(.001, client.deadline - time.monotonic()))
+        if getattr(client, 'checkpoint', None) is None:
+            output, _ = process.communicate(payload, timeout=max(.001, client.deadline - time.monotonic()))
+        else:
+            from data_formulator.ecommerce.process_wait import communicate
+            output, _ = communicate(process, payload, client.deadline, client.checkpoint)
         if time.monotonic() >= client.deadline:
             raise ToolError('ANALYSIS_TIMEOUT', 'Task deadline exceeded')
         if process.returncode or len(output) > MAX_RESPONSE_BYTES:

@@ -1,0 +1,203 @@
+{
+  "stage": "V3",
+  "status": "passed-local-offline",
+  "scope": "Windows single-instance loopback, controlled password accounts, real tool workers and offline model only",
+  "completed_tasks": [
+    "V3-S01",
+    "V3-S02",
+    "V3-S03",
+    "V3-S04",
+    "V3-S05",
+    "V3-S06",
+    "V3-S07",
+    "V3-S08",
+    "V3-S09"
+  ],
+  "base_commit": "d0a67d11309c8f04f134c6efb3620d89deecf338",
+  "fixed_ref": "refs/tags/v0.4.0-v3-multiuser",
+  "release_receipt": "docs/verification/V3-S09/release.json (local only)",
+  "authentication": {
+    "method": "invited password accounts / Werkzeug scrypt / Flask-Session",
+    "stable_internal_owner": true,
+    "anonymous_fallback": false,
+    "real_local_accounts_tested": 2,
+    "qq_enabled": false
+  },
+  "capacity": {
+    "account_limit": 10,
+    "per_user_running": 1,
+    "global_running": 2,
+    "task_queue": 0,
+    "http_threads": 4,
+    "http_backlog": 8,
+    "http_accept_wait_seconds": 1,
+    "user_submit_per_minute": 6,
+    "global_submit_per_minute": 12
+  },
+  "tests": {
+    "backend_passed": 429,
+    "backend_failed": 0,
+    "frontend_passed": 29,
+    "typescript_exit": 0,
+    "build_exit": 0,
+    "browser_passed": true
+  },
+  "isolation": {
+    "own_core_analysis": true,
+    "same_request_id_separate_users": true,
+    "foreign_task_read_cancel_parent_rejected": true,
+    "forged_owner_rejected": true,
+    "query_bypass_closed": true,
+    "logout_switch_late_response_protected": true
+  },
+  "recovery": {
+    "historical_nodes_copied": 12,
+    "source_unchanged": true,
+    "v0_original_recovery_retained": true,
+    "fault_process_stages": 6,
+    "browser_actual_restart": true,
+    "restart_analysis_posts": 0
+  },
+  "ledger": {
+    "calls": 247,
+    "new_real_calls": 0,
+    "known_estimated_cny": "0.04992810",
+    "reserved_cny": "4.89",
+    "unknown_usage_calls": 2,
+    "project_cap_cny": 10,
+    "new_live_budget_cny": 0,
+    "sha256": "0fcdda9608e24c7397414f4bd493f5bde13b6b1b173414f7984214d0482fa0fc",
+    "real_ledger_migrated": false,
+    "copy_migration_conservation_passed": true,
+    "synthetic_two_process_last_reservation_passed": true
+  },
+  "failures_retained": [
+    "S02 late session resurrection: initial failure, repair 1 passed",
+    "S05 test insertion NameError: initial failure, repair 1 passed with all assertions retained",
+    "S09 esbuild sandbox directory failures retained; approved reruns passed",
+    "S09 request adapter TypeScript type mismatch: repair 1 passed",
+    "S09 browser assets dropped under 4-thread saturation: repair 1 passed; diagnostic port conflict retained",
+    "S09 malformed Unicode login: initial failure, repair 1 passed"
+  ],
+  "limitations": [
+    "No public deployment, TLS/proxy or production WSGI acceptance; V4 not started.",
+    "QQ application pending; no QQ/OIDC real-provider acceptance claimed.",
+    "All model dispatch is offline stub; paid campaign not run and live budget remains zero.",
+    "Real historical ledger and nodes remain untouched; migration rehearsed only on isolated copies.",
+    "Single-login session per account; new login revokes older session for that account.",
+    "Account ceiling 10 is a provisional engineering limit, not a confirmed business population or public load SLA.",
+    "Existing Flask-Session signer deprecation and Vite eval/chunk warnings remain.",
+    "No V5 features; original uncommitted roadmap edits remain outside the release commit."
+  ],
+  "evidence": {
+    "authentication": {
+      "path": "docs/verification/V3-S02/c-session-attempt1.json",
+      "sha256": "1c0a165afe5ec6043257a377384e36cbc62b19886bb891b621b50c7e59b02734"
+    },
+    "authorization": {
+      "path": "docs/verification/V3-S03/c-boundary-attempt1.json",
+      "sha256": "277b6cc9eb93b0828fae8783ad7a2b70e686d638ea04c119774c78f18f5686c7"
+    },
+    "storage_concurrency": {
+      "path": "docs/verification/V3-S04/c-conflict-attempt1.json",
+      "sha256": "6ec8935451220412fd3d7ebd64c286f51c20ac1b29690127f11b71629211523e"
+    },
+    "history_migration": {
+      "path": "docs/verification/V3-S04/d-migration-attempt1.json",
+      "sha256": "e24ba59d59e9ae6c7918c2271ae1a79bdbaaaf3115d163266e08b3e95f3bf56f"
+    },
+    "execution_isolation": {
+      "path": "docs/verification/V3-S05/c-route-attempt2.json",
+      "sha256": "0c93ba1b841aa7ea2989835f75955a128bf8feb2a80c403e183b919454246cd1"
+    },
+    "task_race": {
+      "path": "docs/verification/V3-S06/d-race-attempt1.json",
+      "sha256": "2f991e6f17014115a364fc38c7ffda23eaed59c98d0eb9405ab9bcdc9ff1c74d"
+    },
+    "budget_race_conservation": {
+      "path": "docs/verification/V3-S07/d-race-attempt1.json",
+      "sha256": "23ec7c05db664bd7a31f9c63350ea09a65ba5414c7482b5e758aab70d96ae622"
+    },
+    "process_cancellation": {
+      "path": "docs/verification/V3-S08/b-process-attempt1.json",
+      "sha256": "58b14dde4c1b52e473aa1fe7d48e6798924a1577699cb2680e7185d362e03d68"
+    },
+    "process_recovery": {
+      "path": "docs/verification/V3-S08/c-recovery-attempt1.json",
+      "sha256": "33e5a8f529738b236882e296d092e3a9eb5c5c17cd32171781cd99a6b92bb53c"
+    },
+    "task_api": {
+      "path": "docs/verification/V3-S08/d-api-attempt1.json",
+      "sha256": "204918ef9ed9b3eb16b16fd3545f672167f50196be3bd9528624d19cca54da52"
+    },
+    "final_backend": {
+      "path": "docs/verification/V3-S09/backend-attempt2.json",
+      "sha256": "9c156220011918e2f977d5535fa085b6877f17f18efccb2c469d4e9720c49b48"
+    },
+    "final_frontend": {
+      "path": "docs/verification/V3-S09/ab-frontend-attempt3.log",
+      "sha256": "1a27271128d60616a51462f8c27cd6f208b60003e739ad5ffaca4289cb4f9663"
+    },
+    "final_types": {
+      "path": "docs/verification/V3-S09/a-types-attempt3.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "final_build": {
+      "path": "docs/verification/V3-S09/build-attempt3.log",
+      "sha256": "912c68c1bb6e0a18f89d50edeb2537cc77e6e70c2e890d338cefc1bc8b28379b"
+    },
+    "final_browser": {
+      "path": "docs/verification/V3-S09/browser-attempt3/summary.json",
+      "sha256": "51d3c7552d2f9a4746c91c3d8298008bc7a494d7d99a757b97e468206ae63ee4"
+    }
+  },
+  "business_file_sha256": {
+    "devtools/v3_accounts.py": "a9d8d16bdd1b3e30435e0306b07396030e3f7366ac1e8882868833fd113f336f",
+    "devtools/v3_browser.cjs": "984dd650eb28632611fd428c2c9d6a22fb5e5089c4930812b47f5bec72ad7575",
+    "devtools/v3_server.py": "dcb833bc9e67459f65bf1624507ecf894de88e1b1bc374fed6eaeb14c365be42",
+    "py-src/data_formulator/ecommerce/account_store.py": "6fe175b0543ebeb0f3edf742cbcaff6ead79a28c2a0c1d3b5f68a4f6598b4c3f",
+    "py-src/data_formulator/ecommerce/atomic_budget.py": "bbe085a80de1f8a72a41fccf6f4fd05d01ab370fc4e5c202f3fb9c43afff610c",
+    "py-src/data_formulator/ecommerce/authorization.py": "ce5aae02eb2aa6cbf733c9b2914d3c315f1eae520963e0c1eadd23fc9213b1a6",
+    "py-src/data_formulator/ecommerce/budget.py": "4de2dbabfd4162e9557eba216709addeb9ed01c7c74541cf8fb90d56fbb50eb3",
+    "py-src/data_formulator/ecommerce/execution_context.py": "f1a6b4bb01901db937527dd765ba9b11bbc5d2efb4a93c73a63fce794797cbf4",
+    "py-src/data_formulator/ecommerce/executor.py": "bc4c0a73a6ef070d6f60741061716e1a8eeaeb2276181e361ee06f0907a4df89",
+    "py-src/data_formulator/ecommerce/governed_client.py": "2d6cd0e66068d341ed531e1fb2a3dfecd117be0f60c04fe433a1c8b4c6272a79",
+    "py-src/data_formulator/ecommerce/model_transport.py": "c57d51c7cd9342d8253f073a16318737ab3a688069499d2ecf11d90a20102ad8",
+    "py-src/data_formulator/ecommerce/multiuser_app.py": "fe718ad6db11de43bc1b62cf6df843956695192892ca9ea880265a84467201ca",
+    "py-src/data_formulator/ecommerce/multiuser_routes.py": "7984b1faf5dad3555550b04fef2330f899180e0ce8ffb8ee2a731d12882248b3",
+    "py-src/data_formulator/ecommerce/multiuser_service.py": "21e83eff52c9d5721c0410b05bbfa6ab3ef31e169d9b4196b93fbf5fd3cff55a",
+    "py-src/data_formulator/ecommerce/password_auth.py": "2da85e3cace02f0d783d1fd5549c130603a3ecf8cca921ac0f9e41d70949278e",
+    "py-src/data_formulator/ecommerce/policy.py": "0cf79f8bed51aaa3e0c1d5a1cb6c7bea3c51afcc774c7fcf22cf4668bb4f1265",
+    "py-src/data_formulator/ecommerce/process_wait.py": "3aeeb215310eef1ef792f3216392a96dfc31f7e0ae30f9337de38518c1b36c38",
+    "py-src/data_formulator/ecommerce/task_service.py": "6b063e07a89b8fa39f6a4282f7b27238ad348127d3fc93747adacad232f2000f",
+    "py-src/data_formulator/ecommerce/task_store.py": "be6dfffcd583e392dbd3414b3076699bcfcabf551e0e46a5da4bb93947072554",
+    "py-src/data_formulator/ecommerce/v1_agents.py": "ba932a450909f79e70059c96347dff3b6327b50b8960fe8979372988eb4eaa70",
+    "py-src/data_formulator/ecommerce/v1_service.py": "db64a620e2191719c551aae40f1ab6d7b1dc7b50f8063ffb953fc4d61b02a663",
+    "py-src/data_formulator/ecommerce/workspace_migration.py": "4bd6e845e759802357ad8077ddad9fa4caeb62852a7e8554d6e1ca5ffe6058dd",
+    "py-src/data_formulator/ecommerce/workspace_repository.py": "6e7649aa02b238598b98a35198fbe3aaec87516f81c16acf8aaed09dc4062601",
+    "src/index.tsx": "aa856844b22c26034a3fdc1e8ceb998ca0e5e67003daa7631ee243814cad128f",
+    "src/views/EcommerceWorkspace.tsx": "4f4bc5bf192b996236a8d981ef2b9eb11551d4c4a2bb08167d2fc08385b79e04",
+    "src/views/MultiuserWorkspace.tsx": "cb74255a079f8a70c7666fe52d89cef6692c89544def5a82072f7036bd31e8e2",
+    "src/views/ecommerce.ts": "a0004763dbff968f7b5b1a1542db71b29adc30c9aef7a39b7ac95b5676864202",
+    "src/views/multiuserApi.ts": "667640e05fd7e9f0ae988793af000c7aef55c121a40497343ca74604a3f219c4",
+    "tests/backend/ecommerce/test_authorization.py": "456c4fc291e30cefa9515cdbabf614888c262842f04201b6520e7670fd766f1c",
+    "tests/backend/ecommerce/test_limits.py": "b3088b429faee8fe128fb7c0a7dffc030480f19599f3114ef6fd1029c72feb70",
+    "tests/backend/ecommerce/test_multiuser_auth.py": "e01734436d98fa5193def4d77ada9a9b6b3bc5010408f6c412da2225ccb7e09d",
+    "tests/backend/ecommerce/test_multiuser_budget.py": "2eb0d16a51332abf867335be1bb8c50f06eee7b51e3b33d3d18b42d3ce076689",
+    "tests/backend/ecommerce/test_multiuser_execution.py": "6d2dc65264cc36a533da4d5ae4888d785a7cb6da8aa23dac8a681743d2d2bb1a",
+    "tests/backend/ecommerce/test_password_accounts.py": "d02571763fc01445c7ba71c2911eb3c33bf1d0005e5522537008186bb87d1e3b",
+    "tests/backend/ecommerce/test_task_cancellation.py": "d1a5f7700b987835a595849625ccd848ee210b7413f8e9d9c97fe7fdc0bbeef1",
+    "tests/backend/ecommerce/test_task_recovery.py": "46c0512c457d0e8b457104abdf86403478ea5d20a3b0c4fe95fbfac6ac7bd8b6",
+    "tests/backend/ecommerce/test_task_service.py": "6cb7f0367e1eed88cd5f59b857a447689585135ef11bb568d856fc5d186bbf71",
+    "tests/backend/ecommerce/test_task_store.py": "3a0f333e17301b6e19f65f54c738b1780e19457f7248b68bceccf2399588dd98",
+    "tests/backend/ecommerce/test_workspace_migration.py": "b60693dcf881a5b9c2e42c658971d58772b6f4e8a101338254e5447036cec624",
+    "tests/backend/ecommerce/test_workspace_repository.py": "c60d0f1ceb72a6fd9eb05da3eae4ff1900b011f5afa8543dc2c9478b8ae8006e",
+    "tests/frontend/multiuser-api.test.ts": "0bbbbfb5292d0673a8117c13c1c95bd2d3a1a8a754c50624a2a8ea5ff3235e7b",
+    "tests/frontend/multiuser.test.tsx": "d2e3901ea4f590e4094d722618cba3ce61e7c86f14d8a3a82e2f49d334c39926"
+  },
+  "next_task": null,
+  "auto_continue": false,
+  "stop_reason": "User requested V3 only; stop after V3-S09",
+  "remote_push": false,
+  "deployed": false
+}
