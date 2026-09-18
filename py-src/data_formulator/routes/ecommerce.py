@@ -49,7 +49,8 @@ def analyze():
         body = request.get_json(silent=True)
         if selected_mode() == "v1":
             from data_formulator.ecommerce.v1_service import analyze_v1
-            result = analyze_v1(body, identity, Path(get_data_formulator_home()) / "ecommerce")
+            result = analyze_v1(body, identity, Path(get_data_formulator_home()) / "ecommerce",
+                                _v1_workspace(identity))
             return result, (422 if result["state"] == "failed" else 200)
         from data_formulator.ecommerce.analysis_service import analyze as analyze_question
         result = _workspace(identity).analyze(body, lambda: analyze_question(
@@ -71,6 +72,14 @@ def _workspace(identity):
     from data_formulator.datalake.workspace import get_data_formulator_home
     return AnalysisWorkspace(get_workspace_manager(identity), identity,
                              audit_directory=Path(get_data_formulator_home()) / "ecommerce")
+
+
+def _v1_workspace(identity):
+    from data_formulator.workspace_factory import get_workspace_manager, _get_backend
+    from data_formulator.ecommerce.v1_workspace import V1WorkspaceStore
+    if _get_backend() != "local":
+        raise ToolError("ACCESS_DENIED", "V1 recovery requires the local workspace backend")
+    return V1WorkspaceStore(get_workspace_manager(identity), identity)
 
 
 @ecommerce_bp.get("/workspace")

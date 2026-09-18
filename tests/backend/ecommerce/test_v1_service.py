@@ -2,6 +2,8 @@ from pathlib import Path
 
 from data_formulator.ecommerce import v1_service
 from data_formulator.ecommerce.contracts import ToolError
+from data_formulator.datalake.workspace_manager import WorkspaceManager
+from data_formulator.ecommerce.v1_workspace import V1WorkspaceStore
 
 
 def test_v1_service_maps_graph_success_to_api_response(monkeypatch, tmp_path):
@@ -47,3 +49,24 @@ def test_v1_service_rejects_extra_request_fields(tmp_path):
         assert exc.code == "INVALID_REQUEST"
     else:
         raise AssertionError("extra fields were accepted")
+
+
+def test_v1_service_persists_result_and_parent_branch(tmp_path, monkeypatch):
+    store = V1WorkspaceStore(WorkspaceManager(tmp_path / "workspaces"), "local:test")
+    conditions = {"operation": "summarize", "metrics": ["sales_amount"],
+                  "current": {"start": "2018-01-01", "end": "2018-02-01"},
+                  "baseline": None, "regions": [], "group_by": "region"}
+    store.save_run(node_id="v1-parent-001", question="parent", conditions=conditions, status="success")
+    monkeypatch.setattr(v1_service, "invoke_v1_business_graph", lambda state, executor, identity: {
+        "status": "success", "normalized_conditions": {**conditions, "group_by": "day"},
+        "verified_result": {"state": "success"}, "explanation": {"summary": "ok"},
+        "chart_spec": {"type": "line"}, "trace": [],
+    })
+    response = v1_service.analyze_v1(
+        {"request_id": "v1-child-001", "user_question": "按日显示销售趋势", "parent_node_id": "v1-parent-001"},
+        "local:test", tmp_path / "audit", store,
+    )
+    assert response["state"] == "success"
+    node = store.read()["nodes"][-1]
+    assert node["parent_node_id"] == "v1-parent-001"
+    assert node["conditions"]["group_by"] == "day"
