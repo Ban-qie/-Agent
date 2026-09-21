@@ -1,0 +1,52 @@
+name: agent-ecommerce-v4
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${V4_POSTGRES_DB:?Set V4_POSTGRES_DB}
+      POSTGRES_USER: ${V4_POSTGRES_USER:?Set V4_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${V4_POSTGRES_PASSWORD:?Set V4_POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:${V4_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - v4_postgres_data:/var/lib/postgresql/data
+    networks:
+      - v4_private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${V4_REDIS_PASSWORD:?Set V4_REDIS_PASSWORD}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${V4_REDIS_PASSWORD:?Set V4_REDIS_PASSWORD}"]
+    ports:
+      - "127.0.0.1:${V4_REDIS_PORT:-56379}:6379"
+    volumes:
+      - v4_redis_data:/data
+    networks:
+      - v4_private
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+networks:
+  v4_private:
+    driver: bridge
+    internal: true
+
+volumes:
+  v4_postgres_data:
+    name: agent_ecommerce_v4_postgres_data
+  v4_redis_data:
+    name: agent_ecommerce_v4_redis_data
