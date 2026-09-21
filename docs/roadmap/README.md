@@ -74,13 +74,26 @@ node node_modules/vite/bin/vite.js build
 ## 当前接续提示词
 
 ```text
-读取docs/roadmap/README.md、LOW_EXECUTION.md和HANDOFF.md，从V2-S01按卡内小步骤顺序执行。
-目标是核心分析完整、安全稳定的多用户网站，V4必须在明确远程目标实际部署验收。
-保留V1已实现能力、已有修改、旧节点、失败证据和247次累计账目。
-先离线复用/补缺口，真实调用先冻结小预算，不重跑整套付费对照。
-V4-S07通过即结束；V5仅是未启用扩展池，不自动实施。
-按low执行；同一阻塞连续两次修复未通过，保存交接并暂停，申请人工调至medium后再继续。
-如无法证明认证/并发/迁移安全，可提前申请；不自行切模型、不盲试第三次、不放宽验收或预算。
+你现在只执行V4，不执行V5。工作目录是C:\Users\Kobe Bryant\Agent Project。
+
+先执行git status --short并保留所有已有修改、旧节点、失败证据、账目、锁和标签；禁止reset、clean、重装依赖。先完整读取：
+docs/roadmap/README.md
+docs/roadmap/LOW_EXECUTION.md
+docs/roadmap/HANDOFF.md
+docs/roadmap/V4.md
+docs/specs/core-release.md
+docs/validation/V3-multiuser-summary.json
+docs/specs/V3-local-run.md
+
+确认V3-S09通过后，从V4-S01开始，严格按V4.md每张卡的a→b→c→d顺序执行。每次只做一个子步骤；通过后新增docs/verification/V4-Sxx/<step>-attemptN日志、JSON或交接，再继续下一步。证据不得覆盖旧attempt。每个证据写开始commit、git status、命令和退出码、运行环境、通过/失败数、输入/代码hash、Qwen调用增量、账目hash、产生文件和下一步。
+
+V4的真实目标不是localhost演示：S01先冻结目标OS、域名/HTTPS、访问范围、WSGI/代理、可信Host/Origin/代理头、资源/超时、数据许可、账号注入、Qwen smoke预算和回滚信息；缺任何目标输入就标blocked-input，不猜测、不开放公网。S01—S05可在隔离环境完成准备和本地验证，但不能把本地结果写成上线。
+
+保留V1/V2/V3完整电商分析、多用户认证、对象授权、任务幂等、取消恢复、账目守恒和真实Qwen入口。客户端owner/header不可信，多用户无匿名fallback。stub、真实Qwen、远程目标证据分开；健康/ready不调用模型。网站运行账目与Codex调试账目分开，不删除未知费用、不盲重试、不擅自扩大预算。
+
+S01只选一个生产OS/WSGI/反向代理并实际校验配置；S02注入慢模型、断网、坏响应、DB锁、只读、ENOSPC、worker退出并验证服务恢复；S03实际新目录备份/恢复并验证A/B隔离、账目和0 dispatch；S04按冻结manifest跑至少20正常stub、20非法/重复/越权及故障样本，P95用nearest-rank ceil(.95*n)，泄漏/重复执行/预算越界/终态覆盖必须为0；S05生成可审阅发布树、秘密扫描和回滚包；S06只用S05同一commit到用户明确授权的目标环境，先免费验证，再按冻结预算做最多4题、每题最多3次的真实Qwen smoke；S07生成V4-release-summary.json和本地release receipt后停止。
+
+同一阻塞连续两次有依据的修复仍未通过，保存复现、两次补丁、失败日志、费用增量和恢复步骤，暂停并请求人工将思考强度从low调至medium；不盲试第三次、不放宽断言。任何越权、重复计费、未知费用丢失、无法恢复、非预期500、账目hash不一致或目标未真实验证，都不能勾选出口。不要推送、部署第二个目标或进入V5，除非用户另行明确授权。
 ```
 
 历史依据：[V1收尾](V1-closure.md)、[V1真实模型摘要](../validation/V1-team-summary.json)。旧交接中的V2-01/V3-24/V4-26等编号只描述旧路线，后续任务以本页S编号为准。
