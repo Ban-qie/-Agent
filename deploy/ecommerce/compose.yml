@@ -22,7 +22,7 @@ services:
       start_period: 10s
 
   redis:
-    image: redis:7.2-alpine
+    image: redis:8.8.2
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${V4_REDIS_PASSWORD:?Set V4_REDIS_PASSWORD}
