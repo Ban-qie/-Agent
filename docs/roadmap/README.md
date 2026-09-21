@@ -91,7 +91,7 @@ V4的真实目标不是localhost演示：S01先冻结目标OS、域名/HTTPS、�
 
 保留V1/V2/V3完整电商分析、多用户认证、对象授权、任务幂等、取消恢复、账目守恒和真实Qwen入口。客户端owner/header不可信，多用户无匿名fallback。stub、真实Qwen、远程目标证据分开；健康/ready不调用模型。网站运行账目与Codex调试账目分开，不删除未知费用、不盲重试、不擅自扩大预算。
 
-S01只选一个生产OS/WSGI/反向代理、一个PostgreSQL或MySQL、一个Redis并实际校验配置；关系数据库保存全部持久业务数据和账目，Redis只用于共享session、限流和任务协调，不能作为结果或费用唯一真相；S02注入慢模型、断网、坏响应、关系数据库锁/连接池耗尽、Redis不可用、只读、ENOSPC、worker退出并验证服务恢复；S03实际新目录备份/恢复并验证A/B隔离、账目和0 dispatch；S04按冻结manifest跑至少20正常stub、20非法/重复/越权及故障样本，P95用nearest-rank ceil(.95*n)，泄漏/重复执行/预算越界/终态覆盖必须为0；S05生成可审阅发布树、秘密扫描和回滚包；S06只用S05同一commit到用户明确授权的目标环境，先免费验证，再按冻结预算做最多4题、每题最多3次的真实Qwen smoke；S07生成V4-release-summary.json和本地release receipt后停止。
+S01只选一个生产OS/WSGI/反向代理，并冻结Docker Desktop/Compose、PostgreSQL 16和Redis 7.2；PostgreSQL保存全部持久业务数据和账目，Redis只用于共享session、限流和任务协调，不能作为结果或费用唯一真相；S02注入慢模型、断网、坏响应、PostgreSQL锁/连接池耗尽、Redis不可用、只读、ENOSPC、worker退出并验证服务恢复；S03实际新目录备份/恢复并验证A/B隔离、账目和0 dispatch；S04按冻结manifest跑至少20正常stub、20非法/重复/越权及故障样本，P95用nearest-rank ceil(.95*n)，泄漏/重复执行/预算越界/终态覆盖必须为0；S05生成可审阅发布树、秘密扫描和回滚包；S06只用S05同一commit到用户明确授权的目标环境，先免费验证，再按冻结预算做最多4题、每题最多3次的真实Qwen smoke；S07生成V4-release-summary.json和本地release receipt后停止。
 
 同一阻塞连续两次有依据的修复仍未通过，保存复现、两次补丁、失败日志、费用增量和恢复步骤，暂停并请求人工将思考强度从low调至medium；不盲试第三次、不放宽断言。任何越权、重复计费、未知费用丢失、无法恢复、非预期500、账目hash不一致或目标未真实验证，都不能勾选出口。不要推送、部署第二个目标或进入V5，除非用户另行明确授权。
 ```
