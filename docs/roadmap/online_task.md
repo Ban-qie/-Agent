@@ -417,3 +417,11 @@ docs/specs/V3-local-run.md
 - 生产入口固定为 `https://ecominsight.cn`，仅受邀账号加站内密码，无开放注册；QQ/OIDC 暂不接入。公网只开放 22/80/443，PostgreSQL、Redis 和 5567 不公开。
 - V4-S01—S05 的本地证据可复用，但不能替代香港目标的 S06 验收。真实 Qwen smoke 只在 S06c 执行，必须先冻结最多 4 个问题、每题最多 3 次调用、预算和绝对累计上限；S01—S05 调用增量为 0，历史 247 条调试记录、2 条未知 usage 及账目 hash `0fcdda9608e24c7397414f4bd493f5bde13b6b1b173414f7984214d0482fa0fc` 必须守恒。
 - 完成 S07 后立即停止 V4 工作，不自动进入 V5。
+
+### 8.6 2026-09-24 S06 真实部署续作记录
+
+- [x] S06a：香港目标只读盘点通过；Ubuntu 24.04、2 vCPU、约 1.92 GiB、40 GiB、Docker 29.8.1、Compose 5.5.1，部署目录 700，公网初始仅 SSH 22，DNS 尚未修改。
+- [x] S06 迁移输入复核：发现既有 S03 备份是旧快照（`alice/bobby`），与当前本机 V3 PostgreSQL 的 `Ban_qie` 不一致；没有把旧快照当作当前源上线。旧恢复库 `v4_restore_prod_0924` 和 mismatch 证据保留，未公开、未产生模型调用。
+- [x] 从当前本机 V3 PostgreSQL 新建 `s06-current-attempt1`，manifest hash `bfba34010f7375388edd9a461f04e7d0f556940fdf60f9447a8e871a0dd08e5c`，只含当前多用户数据；香港新库为 `v4_restore_prod_0924b`，内部 health/readiness 通过，session=0、active task=0、`local` owner=0。
+- [ ] S06b 公网免费验收：当前等待用户在腾讯云 DNS 添加 `ecominsight.cn` 的 A 记录 `@ -> 43.132.124.152`。在 DNS 生效前不启动 Caddy、不申请 TLS、不开放 80/443。公网 A/B 登录还需要用户通过安全方式注入两测试账号密码；不在聊天中传递密码。
+- [ ] S06c 真实 Qwen smoke：当前目标机仅有占位 key，真实 smoke 前需要用户在目标机私有 env 中安全注入可用 Qwen key，并冻结最多 4 个问题、每题最多 3 次调用和绝对累计上限；此前 S01-S06 免费阶段调用增量为 0。
