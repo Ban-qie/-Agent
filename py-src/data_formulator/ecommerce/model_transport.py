@@ -24,6 +24,7 @@ def dispatch(client, *, messages, stream, params, tools=None):
     process = subprocess.Popen([sys.executable, '-I', '-m',
         'data_formulator.ecommerce.model_worker'], stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env,
+        start_new_session=sys.platform == 'linux',
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
     close_job = None
     try:

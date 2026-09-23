@@ -1,0 +1,56 @@
+FROM node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS frontend
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 make g++ libcairo2-dev libpango1.0-dev libjpeg62-turbo-dev libgif-dev librsvg2-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /build
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile --non-interactive
+COPY index.html tsconfig.json vite.config.ts eslint.config.js ./
+COPY public ./public
+COPY src ./src
+RUN yarn build
+
+FROM python:3.11-slim-bookworm@sha256:a36c24f9cbdf4fd0f52d67f0823eeac19c2028c637cecc392d97f980d4fec56b AS wheels
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential libpq-dev unixodbc-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /build
+COPY pyproject.toml MANIFEST.in README.md LICENSE THIRD_PARTY_NOTICES.md uv.lock ./
+COPY deploy/ecommerce/requirements.production.lock ./requirements.production.lock
+COPY py-src ./py-src
+COPY --from=frontend /build/py-src/data_formulator/dist ./py-src/data_formulator/dist
+RUN python -m pip wheel --no-cache-dir --require-hashes --wheel-dir /wheels \
+      --requirement requirements.production.lock \
+    && python -m pip wheel --no-cache-dir --no-deps --wheel-dir /wheels . gunicorn==23.0.0
+
+FROM python:3.11-slim-bookworm@sha256:a36c24f9cbdf4fd0f52d67f0823eeac19c2028c637cecc392d97f980d4fec56b AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libgomp1 libpq5 unixodbc \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 10001 ecommerce \
+    && useradd --system --uid 10001 --gid ecommerce --home-dir /srv/ecommerce --create-home ecommerce
+COPY --from=wheels /wheels /wheels
+# The builder verifies downloaded artifacts against the exported lock. Wheels
+# built from verified sdists have new hashes, so the runtime consumes only the
+# builder-owned, offline wheelhouse. Every dependency version in that wheelhouse
+# came from requirements.production.lock; the other two wheels are fixed above.
+RUN python -m pip install --no-cache-dir --no-index /wheels/*.whl \
+    && rm -rf /wheels
+COPY --chown=ecommerce:ecommerce deploy/ecommerce/gunicorn.conf.py /etc/ecommerce/gunicorn.conf.py
+COPY --chown=ecommerce:ecommerce data/processed/olist/55d83079902eb6387b886abac02a38d22148ea24a4e9cc384dca0b0094f18d3f \
+  /opt/ecommerce/data/processed/olist/55d83079902eb6387b886abac02a38d22148ea24a4e9cc384dca0b0094f18d3f
+RUN mkdir -p /srv/ecommerce/runtime \
+    && chown -R ecommerce:ecommerce /srv/ecommerce \
+    && chmod -R a-w /opt/ecommerce /etc/ecommerce
+
+ENV LANG=C.UTF-8 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHON_DOTENV_DISABLED=1
+WORKDIR /srv/ecommerce
+USER ecommerce:ecommerce
+EXPOSE 5567
+CMD ["gunicorn", "--config", "/etc/ecommerce/gunicorn.conf.py", "data_formulator.ecommerce.production_app:create_production_app()"]

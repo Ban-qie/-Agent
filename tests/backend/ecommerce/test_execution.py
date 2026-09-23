@@ -109,14 +109,15 @@ def test_environment_excludes_all_inherited_secrets(monkeypatch):
     assert "fake-secret" not in json.dumps(env)
     # Verify the actual child environment, not only the helper return value.
     output = subprocess.check_output([sys.executable, "-I", "-c", "import os,json;print(json.dumps(dict(os.environ)))"],
-                                     env=env, creationflags=subprocess.CREATE_NO_WINDOW, timeout=10)
+                                     env=env, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), timeout=10)
     assert b"fake-secret" not in output
 
 
 def test_real_job_memory_cap():
     code = "import sys\nsys.stdin.readline()\ntry:\n x=bytearray(128*1024*1024)\n print('unexpected allocation')\nexcept MemoryError:\n print('memory limited')"
     proc = subprocess.Popen([sys.executable, "-I", "-c", code], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, env=worker_environment(), creationflags=subprocess.CREATE_NO_WINDOW)
+                            stderr=subprocess.PIPE, env=worker_environment(), start_new_session=sys.platform == 'linux',
+                            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
     close = constrain_process(proc, memory_bytes=64 * 1024 * 1024)
     try:
         out, err = proc.communicate(b"go\n", timeout=10)

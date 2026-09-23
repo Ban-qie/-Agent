@@ -1,0 +1,27 @@
+# Local-only host access for migration rehearsals and diagnostics.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${V4_POSTGRES_PORT:-55432}:5432"
+    networks:
+      v4_private:
+        ipv4_address: 172.29.0.30
+      v4_local: {}
+  redis:
+    ports:
+      - "127.0.0.1:${V4_REDIS_PORT:-56379}:6379"
+    networks:
+      v4_private:
+        ipv4_address: 172.29.0.40
+      v4_local: {}
+  caddy:
+    ports: !override
+      - "127.0.0.1:${V4_HTTPS_PORT:-58443}:443"
+    volumes: !override
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - v4_caddy_data:/data
+      - v4_caddy_config:/config
+
+networks:
+  v4_local:
+    driver: bridge

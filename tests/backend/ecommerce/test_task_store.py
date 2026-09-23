@@ -57,6 +57,17 @@ def test_idempotency_and_claim_fence(tasks):
     assert store.request_cancel(a, 'ecommerce-v0', first['id']) == final
 
 
+def test_active_task_limit_is_store_specific(tasks):
+    store, a, b = tasks
+    store.max_active_tasks = 1
+    store.create_or_get(a, 'ecommerce-v0', body())
+    other = body()
+    other['request_id'] = 'request-002'
+    with pytest.raises(ToolError) as error:
+        store.create_or_get(b, 'ecommerce-v0', other)
+    assert error.value.code == 'BUSY'
+
+
 def test_expired_lease_never_replays(tasks):
     store, a, _ = tasks
     now = [100.0]

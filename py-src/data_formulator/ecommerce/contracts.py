@@ -13,6 +13,10 @@ class ToolError(Exception):
         super().__init__(message)
 
 
+class StorageUnavailable(Exception):
+    """Sanitized storage failure shared by SQLite and PostgreSQL adapters."""
+
+
 @dataclass(frozen=True)
 class AnalysisRequest:
     request_id: str

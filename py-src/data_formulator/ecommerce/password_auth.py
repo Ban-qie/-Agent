@@ -7,21 +7,25 @@ from flask import g, jsonify, request, session
 from flask_session.base import ServerSideSessionInterface
 
 from data_formulator.ecommerce.account_store import LoginLimited, LoginRejected
+from data_formulator.ecommerce.contracts import StorageUnavailable
 
 
 PREFIX = '/api/ecommerce/auth'
 
 
-def install_password_auth(app, store, *, origin, clock=time.time):
-    if origin != 'http://127.0.0.1:5567':
-        raise ValueError('Only the isolated loopback origin is accepted before V3 exit')
+def install_password_auth(app, store, *, origin=None, http_profile=None, clock=time.time):
+    from data_formulator.ecommerce.deployment import HttpProfile
+    http_profile = http_profile or HttpProfile.local(origin or 'http://127.0.0.1:5567')
+    origin = http_profile.origin
     if not isinstance(app.session_interface, ServerSideSessionInterface):
         raise ValueError('Server-side sessions are required')
     if not app.secret_key or len(app.secret_key) < 32:
         raise ValueError('A strong session secret is required')
-    app.config.update(SESSION_COOKIE_NAME='v3_session', SESSION_COOKIE_HTTPONLY=True,
+    app.config.update(SESSION_COOKIE_NAME=('v4_session' if http_profile.name == 'production' else 'v3_session'),
+                      SESSION_COOKIE_HTTPONLY=True,
                       SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=False,
                       PERMANENT_SESSION_LIFETIME=1800, MAX_CONTENT_LENGTH=8192)
+    app.config['SESSION_COOKIE_SECURE'] = http_profile.secure_cookie
     app.extensions['v3_accounts'] = store
 
     def error(code, message, status):
@@ -38,8 +42,11 @@ def install_password_auth(app, store, *, origin, clock=time.time):
     @app.before_request
     def authenticate():
         g.v3_principal = None
-        if request.remote_addr not in ('127.0.0.1', '::1') or request.host != '127.0.0.1:5567':
-            return error('ACCESS_DENIED', 'Loopback development only', 403)
+        if http_profile.name == 'local':
+            if request.remote_addr not in ('127.0.0.1', '::1') or request.host != http_profile.host:
+                return error('ACCESS_DENIED', 'Loopback development only', 403)
+        elif request.scheme != 'https' or request.host.lower() != http_profile.host:
+            return error('ACCESS_DENIED', 'HTTPS host rejected', 403)
         supplied_origin = request.headers.get('Origin')
         if supplied_origin and supplied_origin != origin:
             return error('ACCESS_DENIED', 'Origin rejected', 403)
@@ -57,7 +64,7 @@ def install_password_auth(app, store, *, origin, clock=time.time):
                 g.v3_principal = store.session_principal(session.sid, clock())
             except LoginRejected:
                 rotate()
-            except sqlite3.Error:
+            except (sqlite3.Error, StorageUnavailable):
                 return error('AUTH_UNAVAILABLE', 'Authentication is temporarily unavailable', 503)
         public = {('GET', PREFIX + '/status'), ('POST', PREFIX + '/login')}
         if request.path.startswith('/api/') and (request.method, request.path) not in public:
@@ -90,12 +97,12 @@ def install_password_auth(app, store, *, origin, clock=time.time):
             return error('LOGIN_REJECTED', 'Invalid login credentials', 401)
         except LoginLimited:
             return error('RATE_LIMIT', 'Try again later', 429)
-        except sqlite3.Error:
+        except (sqlite3.Error, StorageUnavailable):
             return error('AUTH_UNAVAILABLE', 'Authentication is temporarily unavailable', 503)
         rotate()
         try:
             store.open_session(session.sid, principal, clock() + 1800)
-        except sqlite3.Error:
+        except (sqlite3.Error, StorageUnavailable):
             return error('AUTH_UNAVAILABLE', 'Authentication is temporarily unavailable', 503)
         session.update(owner=principal['id'], auth_version=principal['auth_version'], expires=clock() + 1800)
         return jsonify(user_id=principal['id'], username=principal['username'], csrf_token=session['csrf'])
@@ -104,7 +111,7 @@ def install_password_auth(app, store, *, origin, clock=time.time):
     def logout():
         try:
             store.close_session(session.sid)
-        except sqlite3.Error:
+        except (sqlite3.Error, StorageUnavailable):
             return error('AUTH_UNAVAILABLE', 'Authentication is temporarily unavailable', 503)
         rotate()
         return jsonify(logged_out=True, csrf_token=session['csrf'])

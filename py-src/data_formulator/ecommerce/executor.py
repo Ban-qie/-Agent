@@ -18,8 +18,10 @@ MAX_EXECUTIONS = 128
 WORKER_TIMEOUT = 15
 
 
-def accepted_catalog():
-    root = Path(__file__).resolve().parents[3] / "data/processed/olist"
+def accepted_catalog(root=None):
+    root = (Path(__file__).resolve().parents[3] / "data/processed/olist"
+            if root is None else Path(root))
+    root = root.resolve()
     path = root / SNAPSHOT_ID / "orders.parquet"
     if not path.resolve().is_relative_to(root.resolve()):
         raise ToolError("SOURCE_INTEGRITY", "Snapshot path escapes the configured data directory")
@@ -40,7 +42,8 @@ def worker_environment():
 def run_worker(request, source, timeout=WORKER_TIMEOUT, checkpoint=None):
     process = subprocess.Popen([sys.executable, "-I", "-m", "data_formulator.ecommerce.worker"],
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               env=worker_environment(), creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                               env=worker_environment(), start_new_session=sys.platform == 'linux',
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     close_job = None
     try:
         close_job = constrain_process(process)

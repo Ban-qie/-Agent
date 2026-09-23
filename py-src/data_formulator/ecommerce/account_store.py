@@ -84,7 +84,7 @@ class AccountStore:
                     raise LoginLimited()
             for scope, _ in scopes:
                 db.execute('INSERT INTO login_limits VALUES(?,?,1) '
-                           'ON CONFLICT(scope) DO UPDATE SET attempts=attempts+1', (scope, now))
+                           'ON CONFLICT(scope) DO UPDATE SET attempts=login_limits.attempts+1', (scope, now))
 
     def login(self, username, password, source):
         # Bound even invalid login input before hashing or DB-key creation.

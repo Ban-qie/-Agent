@@ -1,52 +1,157 @@
 name: agent-ecommerce-v4
 
+x-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     restart: unless-stopped
+    mem_limit: 256m
+    mem_reservation: 128m
+    pids_limit: 64
+    cpus: 0.75
     environment:
       POSTGRES_DB: ${V4_POSTGRES_DB:?Set V4_POSTGRES_DB}
       POSTGRES_USER: ${V4_POSTGRES_USER:?Set V4_POSTGRES_USER}
       POSTGRES_PASSWORD: ${V4_POSTGRES_PASSWORD:?Set V4_POSTGRES_PASSWORD}
-    ports:
-      - "127.0.0.1:${V4_POSTGRES_PORT:-55432}:5432"
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "work_mem=4MB", "-c", "maintenance_work_mem=32MB", "-c", "max_connections=20"]
     volumes:
       - v4_postgres_data:/var/lib/postgresql/data
     networks:
-      - v4_private
+      v4_private:
+        ipv4_address: 172.29.0.30
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 12
       start_period: 10s
+    security_opt: ["no-new-privileges:true"]
+    logging: *bounded-logging
 
   redis:
-    image: redis:8.8.2
+    image: redis:8.8.2@sha256:37227fff5638322f4ebea25d6d0dc3ee50848604e82b81426f11507b3ec7d2cc
     restart: unless-stopped
+    mem_limit: 96m
+    mem_reservation: 32m
+    pids_limit: 32
+    cpus: 0.25
     environment:
       REDIS_PASSWORD: ${V4_REDIS_PASSWORD:?Set V4_REDIS_PASSWORD}
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${V4_REDIS_PASSWORD:?Set V4_REDIS_PASSWORD}"]
-    ports:
-      - "127.0.0.1:${V4_REDIS_PORT:-56379}:6379"
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction", "--requirepass", "${V4_REDIS_PASSWORD:?Set V4_REDIS_PASSWORD}"]
     volumes:
       - v4_redis_data:/data
     networks:
-      - v4_private
+      v4_private:
+        ipv4_address: 172.29.0.40
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$${REDIS_PASSWORD}\" ping | grep -qx PONG"]
       interval: 5s
       timeout: 3s
       retries: 12
       start_period: 5s
+    security_opt: ["no-new-privileges:true"]
+    logging: *bounded-logging
+
+  app:
+    image: ecominsight:v4-candidate
+    build:
+      context: ../..
+      dockerfile: deploy/ecommerce/Dockerfile.production
+    restart: unless-stopped
+    init: true
+    mem_limit: 1024m
+    mem_reservation: 512m
+    pids_limit: 64
+    cpus: 1.0
+    read_only: true
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    environment:
+      V4_POSTGRES_HOST: postgres
+      V4_POSTGRES_DB: ${V4_POSTGRES_DB:?Set V4_POSTGRES_DB}
+      V4_POSTGRES_USER: ${V4_POSTGRES_USER:?Set V4_POSTGRES_USER}
+      V4_POSTGRES_PASSWORD: ${V4_POSTGRES_PASSWORD:?Set V4_POSTGRES_PASSWORD}
+      V4_POSTGRES_SCHEMA: ${V4_POSTGRES_SCHEMA:-ecommerce}
+      V4_REDIS_HOST: redis
+      V4_REDIS_PASSWORD: ${V4_REDIS_PASSWORD:?Set V4_REDIS_PASSWORD}
+      V4_SESSION_SECRET: ${V4_SESSION_SECRET:?Set V4_SESSION_SECRET}
+      V4_ORIGIN: https://ecominsight.cn
+      V4_RUNTIME_ROOT: /srv/ecommerce/runtime
+      V4_SNAPSHOT_ROOT: /opt/ecommerce/data/processed/olist
+      V4_LEGACY_LEDGER_SHA256: 0fcdda9608e24c7397414f4bd493f5bde13b6b1b173414f7984214d0482fa0fc
+      ECOMMERCE_RESTRICTED: "true"
+      PYTHON_DOTENV_DISABLED: "1"
+      QWEN_ENABLED: "true"
+      QWEN_ENDPOINT: openai
+      QWEN_API_BASE: https://dashscope.aliyuncs.com/compatible-mode/v1
+      QWEN_API_VERSION: ""
+      QWEN_MODELS: qwen-flash
+      QWEN_API_KEY: ${QWEN_API_KEY:?Set QWEN_API_KEY}
+    volumes: ["v4_app_runtime:/srv/ecommerce/runtime"]
+    networks:
+      v4_private:
+        ipv4_address: 172.29.0.20
+      v4_egress: {}
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('127.0.0.1',5567),2); s.close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 15s
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    logging: *bounded-logging
+
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    mem_limit: 64m
+    mem_reservation: 32m
+    pids_limit: 32
+    cpus: 0.25
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - v4_caddy_data:/data
+      - v4_caddy_config:/config
+    networks:
+      v4_private:
+        ipv4_address: 172.29.0.10
+      v4_public: {}
+    depends_on:
+      app: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null --header='X-Forwarded-For: 127.0.0.1' --header='X-Forwarded-Host: ecominsight.cn' --header='X-Forwarded-Proto: https' http://app:5567/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+    cap_drop: ["ALL"]
+    cap_add: ["NET_BIND_SERVICE"]
+    security_opt: ["no-new-privileges:true"]
+    logging: *bounded-logging
 
 networks:
   v4_private:
     driver: bridge
     internal: true
+    ipam:
+      config: [{subnet: 172.29.0.0/24}]
+  v4_egress: {driver: bridge}
+  v4_public: {driver: bridge}
 
 volumes:
-  v4_postgres_data:
-    name: agent_ecommerce_v4_postgres_data
-  v4_redis_data:
-    name: agent_ecommerce_v4_redis_data
+  v4_postgres_data: {name: agent_ecommerce_v4_postgres_data}
+  v4_redis_data: {name: agent_ecommerce_v4_redis_data}
+  v4_app_runtime: {name: agent_ecommerce_v4_app_runtime}
+  v4_caddy_data: {name: agent_ecommerce_v4_caddy_data}
+  v4_caddy_config: {name: agent_ecommerce_v4_caddy_config}

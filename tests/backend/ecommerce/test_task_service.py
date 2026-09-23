@@ -1,4 +1,5 @@
 import threading
+import time
 
 import pytest
 
@@ -91,3 +92,41 @@ def test_task_http_202_get_cancel_scope_and_read_only(tasks, tmp_path):
         service.close()
     assert get(ca, path).json['status'] == 'cancelled'
     assert calls == [1]
+
+
+def test_worker_base_exception_becomes_terminal_and_releases_slot(tasks, tmp_path):
+    store, owner, _ = tasks
+    business = MultiuserService(store, tmp_path, lambda *args: None)
+    calls = []
+
+    def exit_worker(*args, **kwargs):
+        del args, kwargs
+        calls.append('exit')
+        raise SystemExit(7)
+
+    business.analyze = exit_worker
+    service = TaskService(store, business, max_workers=1, max_slots=1)
+    try:
+        task = service.submit(Principal(owner), body())
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            current = service.get(Principal(owner), task['id'])
+            if current['status'] in {'failed', 'cancelled', 'interrupted'}:
+                break
+            time.sleep(.01)
+        assert current['status'] == 'failed'
+        assert calls == ['exit']
+
+        business.analyze = lambda *args, **kwargs: {'state': 'success'}
+        next_body = body('next')
+        next_body['request_id'] = 'request-002'
+        next_task = service.submit(Principal(owner), next_body)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            current = service.get(Principal(owner), next_task['id'])
+            if current['status'] == 'success':
+                break
+            time.sleep(.01)
+        assert current['status'] == 'success'
+    finally:
+        service.close()

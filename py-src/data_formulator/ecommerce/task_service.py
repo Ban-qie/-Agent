@@ -35,11 +35,17 @@ def public_task(task):
 
 
 class TaskService:
-    def __init__(self, store, business, budget=None):
+    def __init__(self, store, business, budget=None, *, max_workers=2, max_slots=None):
+        if not isinstance(max_workers, int) or max_workers < 1:
+            raise ValueError('max_workers must be a positive integer')
+        if max_slots is None:
+            max_slots = max_workers
+        if not isinstance(max_slots, int) or max_slots < 1 or max_slots > max_workers:
+            raise ValueError('max_slots must be between 1 and max_workers')
         self.store, self.business = store, business
         self.budget = budget
-        self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix='v3-task')
-        self.slots = threading.BoundedSemaphore(2)
+        self.pool = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix='v3-task')
+        self.slots = threading.BoundedSemaphore(max_slots)
         self.futures = set()
         self.lock = threading.Lock()
 
@@ -84,7 +90,7 @@ class TaskService:
             result = self.business.analyze(principal, json.loads(task['body']), workspace_override=workspace,
                                            client_override=client, checkpoint=client.checkpoint)
             self.store.finish_if_owner_version(task, result, workspace.pending_node)
-        except Exception as error:
+        except BaseException as error:
             if task:
                 try:
                     self.store.finish_if_owner_version(task, {'state': 'failed', 'error': {

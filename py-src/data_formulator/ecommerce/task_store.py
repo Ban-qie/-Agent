@@ -31,6 +31,8 @@ def input_fingerprint(body):
 
 
 class TaskStore(WorkspaceRepository):
+    max_active_tasks = 2
+
     def initialize(self):
         super().initialize()
         with self.transaction() as db:
@@ -71,12 +73,12 @@ class TaskStore(WorkspaceRepository):
                 raise ToolError('RESOURCE_LIMIT', 'Task capacity reached')
             # No waiting queue: reserve one owner/global slot atomically at acceptance.
             active = db.execute("SELECT owner FROM tasks WHERE status IN ('accepted','running')").fetchall()
-            if len(active) >= 2 or any(r['owner'] == owner for r in active):
+            if len(active) >= self.max_active_tasks or any(r['owner'] == owner for r in active):
                 raise ToolError('BUSY', 'Task capacity busy')
             task_id = uuid.uuid4().hex
             for scope in ('global', 'owner:' + owner):
                 db.execute('INSERT INTO submit_limits VALUES(?,?,1) ON CONFLICT(scope) '
-                           'DO UPDATE SET attempts=attempts+1', (scope, now))
+                           'DO UPDATE SET attempts=submit_limits.attempts+1', (scope, now))
             db.execute('INSERT INTO tasks(id,owner,workspace,request_id,fingerprint,body,status,version,lease_expiry,created,updated) '
                        "VALUES(?,?,?,?,?,?,'accepted',0,?,?,?)",
                        (task_id, owner, workspace, body['request_id'], fingerprint, pack(body), now + 75, now, now))
@@ -152,3 +154,10 @@ class TaskStore(WorkspaceRepository):
             return db.execute("UPDATE tasks SET status='interrupted',version=version+1,updated=?,"
                               "response=? WHERE status IN ('accepted','running') AND lease_expiry<=?",
                               (self.clock(), pack({'state': 'interrupted'}), self.clock())).rowcount
+
+    def interrupt_inflight(self):
+        """One-time process-start recovery. Never dispatch or replay old work."""
+        with self.transaction() as db:
+            return db.execute("UPDATE tasks SET status='interrupted',version=version+1,updated=?,"
+                              "response=? WHERE status IN ('accepted','running')",
+                              (self.clock(), pack({'state': 'interrupted'}))).rowcount

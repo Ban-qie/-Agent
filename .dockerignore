@@ -10,3 +10,7 @@ dist
 build
 .pytest_cache
 .mypy_cache
+.local
+docs/verification
+data/raw
+deploy/ecommerce/.env.v4.private

@@ -7,14 +7,15 @@ from data_formulator.ecommerce.workspace_repository import pack
 
 
 class WebsiteUsage:
-    def __init__(self, store):
+    def __init__(self, store, *, initialize=True):
         self.store = store
-        with store.transaction() as db:
-            db.execute("""CREATE TABLE IF NOT EXISTS website_usage (
-                id TEXT PRIMARY KEY,owner TEXT NOT NULL,workspace TEXT NOT NULL,
-                task TEXT NOT NULL REFERENCES tasks(id),dispatch INTEGER NOT NULL,
-                reserved INTEGER NOT NULL,estimated INTEGER NOT NULL DEFAULT 0,
-                settlement TEXT,UNIQUE(task,dispatch))""")
+        if initialize:
+            with store.transaction() as db:
+                db.execute("""CREATE TABLE IF NOT EXISTS website_usage (
+                    id TEXT PRIMARY KEY,owner TEXT NOT NULL,workspace TEXT NOT NULL,
+                    task TEXT NOT NULL REFERENCES tasks(id),dispatch INTEGER NOT NULL,
+                    reserved INTEGER NOT NULL,estimated INTEGER NOT NULL DEFAULT 0,
+                    settlement TEXT,UNIQUE(task,dispatch))""")
 
     def reserve(self, task, dispatch):
         if type(dispatch) is not int or not 1 <= dispatch <= 3:

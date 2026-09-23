@@ -1,0 +1,33 @@
+{
+	admin off
+	servers {
+		protocols h1 h2
+		timeouts {
+			read_body 10s
+			read_header 5s
+			write 70s
+			idle 30s
+		}
+	}
+}
+
+https://ecominsight.cn {
+	tls internal
+
+	request_body {
+		max_size 8KB
+	}
+
+	reverse_proxy app:5567 {
+		header_up X-Forwarded-Host ecominsight.cn
+		header_up X-Forwarded-Proto https
+		transport http {
+			dial_timeout 2s
+			response_header_timeout 65s
+		}
+	}
+}
+
+:443 {
+	respond 421
+}

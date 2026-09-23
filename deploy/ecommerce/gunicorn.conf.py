@@ -1,0 +1,14 @@
+bind = "0.0.0.0:5567"
+workers = 1
+worker_class = "gthread"
+threads = 4
+backlog = 8
+timeout = 30
+graceful_timeout = 10
+keepalive = 5
+max_requests = 1000
+max_requests_jitter = 50
+accesslog = None
+errorlog = "-"
+capture_output = True
+loglevel = "info"

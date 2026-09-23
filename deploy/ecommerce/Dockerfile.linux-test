@@ -1,0 +1,8 @@
+# Isolated offline behavior tests only; not the production application image.
+FROM python:3.11-slim-bookworm@sha256:a36c24f9cbdf4fd0f52d67f0823eeac19c2028c637cecc392d97f980d4fec56b
+RUN pip install --no-cache-dir pytest==9.0.3 pyarrow==25.0.0 numpy==2.4.2 litellm==1.91.3 python-dotenv==1.2.2 azure-identity==1.25.1
+RUN pip install --no-cache-dir pandas==2.3.3
+# -I child interpreters must resolve the package without PYTHONPATH.
+RUN printf '%s\n' '/work/py-src' > /usr/local/lib/python3.11/site-packages/ecommerce-test.pth
+ENV PYTHON_DOTENV_DISABLED=1 LITELLM_LOCAL_MODEL_COST_MAP=True PYTHONDONTWRITEBYTECODE=1
+WORKDIR /work
