@@ -2,7 +2,7 @@
 
 更新日期：2026-09-23  
 当前阶段：V4 真实上线验收
-当前停留点（2026-09-25）：V4-S01—S05、V4-S06a 和 V4-S06b 已通过。S06c 的 medium 修复已以提交 `280045f9` 部署至香港生产站，目标断网回归和免费公网检查通过；真实 Qwen Attempt1—3 失败记录保留，Attempt4 未获授权，S06c 尚未通过，S06d/S07 继续等待。最新事实见本文末尾续作记录，前文各日期记录保留为历史。
+当前停留点（2026-09-25）：V4-S01—S05、V4-S06a 和 V4-S06b 已通过。S06c 的 medium 修复以提交 `280045f9` 部署至香港生产站。用户授权后 Attempt4 已执行一次，Qwen 返回有效响应和已知 usage，但任务要求澄清、未执行分析，S06c 尚未通过。下一步仅离线处理“已送达”口径措辞解析缺口；新付费调用未授权，S06d/S07 继续等待。最新事实见本文末尾，旧日期记录保留为历史。
 
 当前生产运行限制、用户可见上限、资源预算、备份要求和建议监控阈值统一记录在 [`V4-STABILITY-LIMITS.md`](V4-STABILITY-LIMITS.md)。其中明确区分发布 smoke 预算、单任务安全边界和生产用户配额。
 
@@ -465,3 +465,14 @@ Attempt2 使用固定 request ID `v4-s06c-smoke-20260925-02` 和用户授权的�
 - [ ] S06c 真实成功后再做 S06d/S07；本轮不代表这些任务通过。
 
 当前证据：`docs/verification/V4-S06/s06c-medium-deploy-attempt2.json`；新预算提案：`s06c-budget-proposal-attempt4.json`。部署业务代码 `280045f9`，后续文档提交不改变该镜像版本。
+
+### 2026-09-25 Attempt4 已执行（最新）
+
+- [x] 用户明确授权上述0.10元预算，单独保存 `s06c-budget-authorization-attempt4.json`。预检确认新ID未使用、active0、旧账目完整，保守计入历史估算/预留及网站预留后5.05992810元，加本次上限仍低于10元；未知费用没有按零清除。
+- [x] 仅提交一次 `v4-s06c-smoke-20260925-04`，HTTP202，任务 `ce98e5cf84fc4ba4a10061dd14599d2d`。新增1次真实dispatch、自动重试0；输入455/输出40 token，账目估算0.00012825元。实际供应商账单未在控制台复核。
+- [x] 传输恢复已获真实响应和usage证据；网站账目7条、estimated units546300、V4 unknown仍3条，旧归档哈希不变。四容器healthy，未重启/部署。
+- [ ] 完整分析未通过：`waiting_clarification / clarification_required`，`executed=false`。澄清提示为未支持/无法确认条件；没有核心数值可验收。
+- [x] 免费复现输入解析：冻结原问题含“已送达订单的”被严格解析器拒绝；替换为已支持的“已交付”或省略该默认口径描述则解析成功。未记录真实模型canonical原文，因此不能断言该原文具体措辞。未修改生产代码、未换题付费重试。
+- [ ] 下一步离线补充口径同义词的正反例并定位最小修复；保留未支持条件拒绝规则。随后仍需新request ID、单独预算和授权才可真实复验；Attempt4剩余额度不自动转为下一次授权。
+
+证据：`docs/verification/V4-S06/s06c-smoke-attempt4.json`、`.local/v4-public-qwen-smoke-attempt4.json`、`.local/v4-attempt4-production-audit.json`、`.local/v4-attempt4-offline-diagnosis.json`。客户端原failed状态保留，不能重写成完整成功；S06d/S07仍等待。
