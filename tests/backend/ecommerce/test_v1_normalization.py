@@ -39,6 +39,26 @@ def test_comparison_normalizes_metrics_periods_sort_and_top_n():
     assert request.current.start == "2018-02-01" and request.baseline.start == "2018-01-01"
 
 
+@pytest.mark.parametrize('wording', ['已送达订单', '已送达', '已交付订单', '已交付'])
+def test_delivered_wording_preserves_exact_comparison_scope(wording):
+    result = normalize_question(f'比较2018年2月与2018年1月{wording}的销售额、订单数和客单价')
+    expected = normalize_question('比较2018年2月与2018年1月销售额、订单数和客单价')
+    assert result == expected
+    assert result['order_status'] == ['delivered']
+    assert result['time_field'] == 'purchase_at'
+    assert result['sales_basis'] == 'item_price_excluding_freight'
+
+
+@pytest.mark.parametrize('condition', [
+    '未送达订单', '未已送达订单', '非已送达订单', '排除已送达订单',
+    '已送达订单或已取消订单', '已送达订单含运费', '已送达订单只看电子商品',
+    '已送达订单按送达时间', '已送达订单不含地区SP',
+])
+def test_delivered_alias_does_not_drop_unsupported_conditions(condition):
+    with pytest.raises(NormalizationError):
+        normalize_question(f'比较2018年2月与2018年1月{condition}的销售额、订单数和客单价')
+
+
 def test_follow_up_inherits_confirmed_conditions_and_only_changes_grouping():
     first = normalize_question("比较2018年2月与2018年1月销售额地区SP")
     follow_up = normalize_question("按日显示销售趋势", first)

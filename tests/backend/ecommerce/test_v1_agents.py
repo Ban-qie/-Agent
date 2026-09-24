@@ -54,6 +54,21 @@ def test_three_agents_exchange_plan_review_and_real_tool_evidence():
         'query_generator', 'query_validator', 'executor', 'interpreter', 'chart_planner']
 
 
+def test_attempt4_original_wording_reaches_execution_without_rephrasing():
+    question = '比较2018年2月与2018年1月已送达订单的销售额、订单数和客单价'
+    client, executor = Client(answers(question)), Executor()
+    result = invoke_v1_agent_graph(_state(question, 'attempt4-offline-wording'), executor, client=client)
+    assert result['status'] == 'success'
+    assert len(client.messages) == 3 and len(executor.calls) == 1
+    request = executor.calls[0]
+    assert request.operation == 'compare'
+    assert request.current.start == '2018-02-01'
+    assert request.baseline.start == '2018-01-01'
+    planner_input = json.loads(client.messages[0][1]['content'])
+    assert planner_input['strict_conditions']['order_status'] == ['delivered']
+    assert json.loads(client.messages[1][1]['content'])['canonical_question'] == question
+
+
 def test_reviewer_veto_routes_to_clarification_before_tool():
     client, executor = Client([answers()[0], {'decision': 'clarify', 'question': '商品筛选不支持，请确认。'}]), Executor()
     result = invoke_v1_agent_graph(_state('只看电子商品2018年1月销售额', 'team-veto-001'), executor, client=client)
