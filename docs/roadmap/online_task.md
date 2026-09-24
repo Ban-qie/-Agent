@@ -2,7 +2,7 @@
 
 更新日期：2026-09-23  
 当前阶段：V4 真实上线验收
-当前停留点（2026-09-25）：V4-S01—S05、V4-S06a 和 V4-S06b 已通过。S06c 的 medium 修复以提交 `280045f9` 部署至香港生产站。用户授权后 Attempt4 已执行一次，Qwen 返回有效响应和已知 usage，但任务要求澄清、未执行分析，S06c 尚未通过。下一步仅离线处理“已送达”口径措辞解析缺口；新付费调用未授权，S06d/S07 继续等待。最新事实见本文末尾，旧日期记录保留为历史。
+当前停留点（2026-09-25）：V4-S01—S05、V4-S06a 和 V4-S06b 已通过。Attempt4 已证明 Qwen 传输恢复，但因澄清未完成分析。后续“已送达”解析补丁 `73a7ae68` 已部署香港，424项离线回归、真实快照/受限执行器及独立CSV数值核对通过，免费公网检查正常。下一步等待真实 Attempt5 原题复验的单独授权；S06c仍未通过，S06d/S07不启动。
 
 当前生产运行限制、用户可见上限、资源预算、备份要求和建议监控阈值统一记录在 [`V4-STABILITY-LIMITS.md`](V4-STABILITY-LIMITS.md)。其中明确区分发布 smoke 预算、单任务安全边界和生产用户配额。
 
@@ -476,3 +476,15 @@ Attempt2 使用固定 request ID `v4-s06c-smoke-20260925-02` 和用户授权的�
 - [ ] 下一步离线补充口径同义词的正反例并定位最小修复；保留未支持条件拒绝规则。随后仍需新request ID、单独预算和授权才可真实复验；Attempt4剩余额度不自动转为下一次授权。
 
 证据：`docs/verification/V4-S06/s06c-smoke-attempt4.json`、`.local/v4-public-qwen-smoke-attempt4.json`、`.local/v4-attempt4-production-audit.json`、`.local/v4-attempt4-offline-diagnosis.json`。客户端原failed状态保留，不能重写成完整成功；S06d/S07仍等待。
+
+### 2026-09-25 措辞修复和免费部署（最新）
+
+- [x] 修复前新增反例：3失败/11通过；仅增加“已送达订单”“已送达”两个明确同义词，不删未知条件校验、不改delivered/下单时间/不含运费口径。
+- [x] 定向53项及完整后端424项通过；未送达、否定、排除、混合取消订单、运费、商品筛选、送达时间等继续拒绝。
+- [x] 新增 `devtools/v4_wording_probe.py`：原题、模型fixture、真实快照/受限查询进程，完整图成功；本地和香港容器均断网，输出经原始CSV＋Decimal独立核对。不是Qwen真实成功证据。
+- [x] 新增只读状态说明 `python -m devtools.v4_smoke_status <证据路径>`，分别说明登录、模型证据和分析验收；原Attempt4脚本/证据不改写。后续交互runner须复用分阶段说明，避免再把总failed误读为密码错误。
+- [x] 业务提交 `73a7ae68b47c3242d1d591b05f72f9f0b503c6bc`，镜像 `sha256:ac2343ece33408df76ee7727c72f0deb3d22aa98ccfdc89519915794ef30f1d3` 已部署。只重建app，维护8.78秒；其他容器不重启，4容器healthy/restarts0；9表内容指纹一致，旧归档原始哈希一致，usage7/unknown3/estimated546300单位。
+- [x] 备份已离机并核验SHA-256，旧镜像保留为 `ecominsight:v4-rollback-s06c-wording-fix1-predeploy`。公网healthz/readyz/匿名auth状态均200；本轮真实Qwen0、费用0，未推送。
+- [ ] 新真实Attempt5提案：保持原题，仅提交1次，最多3内部调用、重试0、新增上限0.10元、累计上限10元。`s06c-budget-proposal-attempt5.json` 尚未授权，禁止复用Attempt4授权或ID。
+
+证据入口：`docs/verification/V4-S06/s06c-wording-validation-attempt1.json`、`s06c-wording-deploy-attempt1.json`；公网记录 `.local/v4-s06c-wording-public-check-attempt1.json`。S06c仍等待真实原题与数值/账目验收，不能因fixture成功进入S06d/S07。
