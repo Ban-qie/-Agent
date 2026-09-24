@@ -59,6 +59,31 @@ def test_same_request_cache_and_audit_isolated(fixture):
     assert worker.call_count == 2
 
 
+def test_service_passes_server_catalog_to_executor(tmp_path, monkeypatch):
+    from data_formulator.ecommerce.multiuser_service import MultiuserService
+
+    catalog = {SNAPSHOT_ID: {'path': '/opt/ecommerce/frozen/orders.parquet',
+                             'sha256': '0' * 64, 'quality': {}}}
+    captured = {}
+
+    class Executor:
+        def __init__(self, audit_path, catalog=None, *, context=None):
+            captured.update(audit_path=audit_path, catalog=catalog, context=context)
+
+    monkeypatch.setattr('data_formulator.ecommerce.multiuser_service.MetricExecutor', Executor)
+    service = MultiuserService(Mock(), tmp_path / 'audit', Mock(), catalog=catalog)
+    principal = Principal('owner-id')
+    workspace = Mock()
+    client = Mock()
+
+    monkeypatch.setattr('data_formulator.ecommerce.multiuser_service.validate_analyze_request', lambda body: None)
+    monkeypatch.setattr('data_formulator.ecommerce.multiuser_service.analyze_v1', lambda *args, **kwargs: {'state': 'success'})
+    assert service.analyze(principal, {'request_id': 'catalog-pass-001'},
+                           workspace_override=workspace, client_override=client)['state'] == 'success'
+    assert captured['catalog'] is catalog
+    assert captured['context'].principal == principal
+
+
 def test_two_password_users_route_and_parent_boundary(tmp_path):
     import secrets
     from data_formulator.ecommerce.multiuser_app import create_app

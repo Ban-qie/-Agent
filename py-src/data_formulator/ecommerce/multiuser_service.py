@@ -49,10 +49,11 @@ class ScopedWorkspace:
 
 
 class MultiuserService:
-    def __init__(self, repository, directory, client_factory):
+    def __init__(self, repository, directory, client_factory, *, catalog=None):
         if not callable(client_factory):
             raise ValueError('An explicit governed model client is required')
         self.repository, self.directory, self.client_factory = repository, Path(directory), client_factory
+        self.catalog = catalog
 
     def workspace(self, principal):
         if not isinstance(principal, Principal):
@@ -66,7 +67,7 @@ class MultiuserService:
         workspace = workspace_override if workspace_override is not None else self.workspace(principal)
         if body.get('parent_node_id'):
             workspace.parent_conditions(body['parent_node_id'])
-        executor = MetricExecutor(self.directory / 'execution-audit.json',
+        executor = MetricExecutor(self.directory / 'execution-audit.json', self.catalog,
                                   context=ExecutionContext(principal, WORKSPACE, self.repository, checkpoint))
         client = client_override if client_override is not None else self.client_factory(principal, body['request_id'])
         if client is None:

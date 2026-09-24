@@ -123,7 +123,7 @@ def create_production_app(settings=None, *, store=None, session_cache=None, coor
                                            'snapshot': lambda: _snapshot_ready(catalog),
                                            'ledger': ledger_ready},
                          store=store, session_cache=session_cache)
-        business = MultiuserService(store, settings.runtime_root / 'audit', client_factory)
+        business = MultiuserService(store, settings.runtime_root / 'audit', client_factory, catalog=catalog)
         service = TaskService(store, business, usage, max_workers=1, max_slots=1)
         install_routes(app, service)
         dist = Path(__file__).resolve().parents[1] / 'dist'
