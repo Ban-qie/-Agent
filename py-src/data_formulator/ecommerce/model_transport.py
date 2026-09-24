@@ -8,8 +8,8 @@ import time
 from data_formulator.ecommerce.contracts import ToolError
 from data_formulator.ecommerce.executor import worker_environment
 from data_formulator.ecommerce.process_limits import constrain_process
+from data_formulator.ecommerce.model_wire import MAX_RESPONSE_BYTES
 
-MAX_RESPONSE_BYTES = 512 * 1024
 CLEANUP_SECONDS = 2
 ERROR_CATEGORIES = frozenset({'bad_request', 'authentication', 'permission',
                               'rate_limit', 'quota', 'server', 'connection',

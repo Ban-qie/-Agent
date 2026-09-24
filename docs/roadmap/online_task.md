@@ -2,7 +2,7 @@
 
 更新日期：2026-09-23  
 当前阶段：V4 真实上线验收
-当前停留点：V4-S01—S05、V4-S06a 和 V4-S06b 已通过；香港生产站 `https://ecominsight.cn` 已部署并完成免费公网双账号验收。下一步为 V4-S06c，等待用户确认已冻结的真实 Qwen smoke 预算；随后执行 S06d 重启/回滚和 S07 发布收口。香港目标无需且不能办理中国大陆 ICP 备案。
+当前停留点（2026-09-25）：V4-S01—S05、V4-S06a 和 V4-S06b 已通过；香港生产站 `https://ecominsight.cn` 已部署并完成免费公网双账号验收。真实 Qwen Attempt1—3 均失败，S06c 尚未通过。用户已明确切换 medium，当前仅恢复免费诊断和离线修复验证；真实 Attempt4 未获授权，S06d/S07 继续等待。最新事实见本文末尾续作记录，前文各日期记录保留为历史。
 
 当前生产运行限制、用户可见上限、资源预算、备份要求和建议监控阈值统一记录在 [`V4-STABILITY-LIMITS.md`](V4-STABILITY-LIMITS.md)。其中明确区分发布 smoke 预算、单任务安全边界和生产用户配额。
 
@@ -439,3 +439,16 @@ Attempt2 使用固定 request ID `v4-s06c-smoke-20260925-02` 和用户授权的�
 用户随后确认默认业务空间未欠费、额度充足、`qwen-flash` 有调用权且无供应商限流，并授权 Attempt3 新增费用最多 0.10 元。固定 request ID `v4-s06c-smoke-20260925-03` 只提交一次，任务 `b7b7670622dd451dbc64f4a1d037a1f1` 在 planner 阶段经过 1 次 dispatch 后仍以 `provider` 类失败，自动重试 0；新分类器未取得 HTTP 状态或白名单错误码。`website_usage` 当前 6 条、V4 unknown usage 3 条，旧调试账目哈希不变，所有容器和公网健康检查正常。由于修复1后 Attempt2 失败、修复2后 Attempt3 仍失败，已达到强制升级门槛：S06c 状态改为“暂停-待人工调整”，必须由用户将思考强度从 low 提升到 medium 后明确回复继续；在此之前不得修改代码、部署、发起 Attempt4 或进入 S06d/S07。
 
 **Authoritative pause record (2026-09-25):** V4-S06c is paused after Attempt3 failed following the second evidence-based fix. No code change, deployment, Attempt4 request, S06d, or S07 work is permitted until the user changes reasoning effort from low to medium and explicitly asks to continue. Any future real request also requires a new request ID and a separately frozen budget.
+
+### 2026-09-25 medium 免费诊断续作（当前有效入口）
+
+- [x] 用户明确切换 medium 并恢复免费诊断；保留 low 两次修复及真实 Attempt1—3 失败记录。
+- [x] 生产镜像断网复现：HTTP 200 后 LiteLLM 创建线程失败，旧分类器返回 `provider`。定位到模型 worker 为常量导入 model_transport，间接加载 pandas 等无关数据依赖，挤占 512 MiB 地址空间。历史线上失败没有异常栈，不能全部断言为同一原因。
+- [x] medium 修复1：常量移至无依赖 model_wire；不提高内存、超时或调用额度。真实 SDK + 本地假 HTTP + 受限 worker 的同一脚本，旧版失败、修复后 6 项通过，每项仅 1 次假请求。
+- [x] 完整 ecommerce 离线回归 407 项通过（退出0）；旧失败、补丁、15 个文件指纹和新验证日志已分开保存。
+- [x] 生产只读账目审计：6 条 website usage、3 条 V4 unknown、estimated units 418050、旧 ledger hash 不变；本轮真实 Qwen 请求及费用增量 0。
+- [ ] 补丁发布与目标环境免费验收：当前未部署。先保存发布指纹和回滚点，再按既有部署边界处理。
+- [ ] 新真实 smoke：本轮不执行，单独冻结 request ID、预算并取得明确授权；成功后才关闭 S06c。
+- [ ] S06d 重启/回滚与 S07 发布收口；继续不进入 V5。
+
+详细复现、补丁、日志与恢复步骤见 `docs/verification/V4-S06/s06c-medium-diagnosis.md`。本地 6 项通过不是线上 Qwen 已修复的验收结论。续作先读该文件和同目录 handoff，不能根据前文旧预算/暂停状态直接重试。

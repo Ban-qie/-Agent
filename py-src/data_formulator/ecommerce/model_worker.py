@@ -81,7 +81,7 @@ def main():
         try:
             payload = json.loads(sys.stdin.buffer.read(128 * 1024))
             from data_formulator.agents.client_utils import Client
-            from data_formulator.ecommerce.model_transport import MAX_RESPONSE_BYTES
+            from data_formulator.ecommerce.model_wire import MAX_RESPONSE_BYTES
             client = Client(payload['endpoint'], payload['model'])
             response = client._dispatch(messages=payload['messages'], stream=payload['stream'],
                                         params=payload['params'], tools=payload['tools'])
