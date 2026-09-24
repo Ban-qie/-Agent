@@ -2,7 +2,9 @@
 
 更新日期：2026-09-23  
 当前阶段：V4 真实上线验收
-当前停留点：V4-S01—S05 已通过，下一步为香港目标的 V4-S06a 部署前检查；尚未修改 DNS、部署远程应用或开放网站。香港目标无需且不能办理中国大陆 ICP 备案。
+当前停留点：V4-S01—S05、V4-S06a 和 V4-S06b 已通过；香港生产站 `https://ecominsight.cn` 已部署并完成免费公网双账号验收。下一步为 V4-S06c，等待用户确认已冻结的真实 Qwen smoke 预算；随后执行 S06d 重启/回滚和 S07 发布收口。香港目标无需且不能办理中国大陆 ICP 备案。
+
+当前生产运行限制、用户可见上限、资源预算、备份要求和建议监控阈值统一记录在 [`V4-STABILITY-LIMITS.md`](V4-STABILITY-LIMITS.md)。其中明确区分发布 smoke 预算、单任务安全边界和生产用户配额。
 
 ## 1. 项目背景
 
@@ -39,7 +41,7 @@ V1/V2/V3 的本地通过记录不能替代 V4 的真实目标环境验收。当�
 | 时区 | `Asia/Shanghai`，NTP 已同步 |
 | 当前域名 | `ecominsight.cn`，已购买并实名通过；最终唯一入口为 `https://ecominsight.cn` |
 | 当前备案 | 香港目标为 N/A：腾讯云官方说明中国香港及境外轻量实例无需备案，也不能用于备案 |
-| 反向代理 | Caddy 2.10.2-alpine，TLS 在 Caddy 终止，应用仅信任固定容器地址 `172.29.0.10/32` 的一跳代理头；尚未远程部署 |
+| 反向代理 | Caddy 2.10.2-alpine 已在香港目标运行，TLS 在 Caddy 终止，应用仅信任固定容器地址 `172.29.0.10/32` 的一跳代理头 |
 | 访问范围 | 公网可达，仅管理员创建的受邀账号可登录，不开放注册 |
 | 维护与恢复 | 首次上线允许 30 分钟维护窗口；用户负责腾讯云控制台恢复，应用内恢复步骤由发布说明固定 |
 
@@ -342,7 +344,7 @@ docs/specs/V3-local-run.md
 
 香港 2 核 2 GiB 实例购买容量闸门现已通过。该结论仅放行购买，不代表 V4-S04 整卡完成：至少 20 个正常 stub、20 个非法/重复/越权请求，以及取消、重启、存储失败和预算耗尽的完整矩阵仍待执行。
 
-当前下一步已经随香港实例和域名购买完成而更新：先按 V4-S01d 完成锁定依赖生产镜像、完整本地生产栈、迁移反例与 HTTP 行为验收；再依次执行 V4-S02、S03、S04、S05。只有 S05 的同一发布包、固定 commit、回滚包和备份均验收后，才进入 S06 修改 DNS、签发 TLS、部署香港实例和执行预算冻结后的真实 Qwen smoke。S07 完成发布收口后停止，不进入 V5。
+当前下一步已更新为 V4-S06c：S01—S05 与 S06a/S06b 均已完成，DNS、TLS、香港部署和公网双账号隔离已通过。收到用户对 `s06c-budget-proposal-attempt1.json` 的明确确认后，仅执行其中一个固定真实 Qwen smoke；随后完成 S06d 和 S07，并停止在 V4。
 
 ### 8.2 2026-09-23 更新：线上历史迁移范围
 
@@ -404,7 +406,7 @@ docs/specs/V3-local-run.md
 - [x] V4-S04a-d：双实例 20 个正常任务和 20 个对抗请求通过；全局单槽在 PostgreSQL 中原子执行，第二任务快速 429 且不落任务、不产生 usage。10 类故障复验和 2 GiB 容量闸门通过，最终后端回归 391 项通过；真实 Qwen 0，账目 hash 不变。
 - [x] V4-S05a-d 已完成：最终发布 manifest、秘密扫描、回滚演练和演示材料均已通过；文档更新后的最终包 commit 为 `857a9999`。
 - [x] V4-S05a-d：最终发布包来源 `857a9999`，归档 SHA-256 为 `bcc62a0dd816ae3cfa805820a60b17c72373c37d6d0749d22bf33743436fcd5f`，镜像 digest、锁依赖、Olist 快照和 Portfolio 均有证据；秘密扫描命中 0；回滚恢复、旧代码兼容边界、失败后入口关闭和 3–5 分钟演示脚本均通过。真实 Qwen 0，账目 hash 不变。
-- [ ] 当前下一步：V4-S06a 部署前检查。只能使用最终 S05 发布包和用户已授权香港目标；先核对磁盘、权限、端口、备份和回滚点，尚未修改 DNS 或开放公网入口。
+- [ ] 当前下一步：V4-S06c 真实 Qwen smoke。预算提案已经固化；等待用户明确确认后提交一次固定 request_id，不得自动重试或扩大预算。
 
 ### 8.5 2026-09-24 用户最终确认：线上舍弃 V1/V2 单用户历史
 
@@ -422,6 +424,6 @@ docs/specs/V3-local-run.md
 
 - [x] S06a：香港目标只读盘点通过；Ubuntu 24.04、2 vCPU、约 1.92 GiB、40 GiB、Docker 29.8.1、Compose 5.5.1，部署目录 700，公网初始仅 SSH 22，DNS 尚未修改。
 - [x] S06 迁移输入复核：发现既有 S03 备份是旧快照（`alice/bobby`），与当前本机 V3 PostgreSQL 的 `Ban_qie` 不一致；没有把旧快照当作当前源上线。旧恢复库 `v4_restore_prod_0924` 和 mismatch 证据保留，未公开、未产生模型调用。
-- [x] 从当前本机 V3 PostgreSQL 新建 `s06-current-attempt1`，manifest hash `bfba34010f7375388edd9a461f04e7d0f556940fdf60f9447a8e871a0dd08e5c`，只含当前多用户数据；香港新库为 `v4_restore_prod_0924b`，内部 health/readiness 通过，session=0、active task=0、`local` owner=0。
-- [ ] S06b 公网免费验收：当前等待用户在腾讯云 DNS 添加 `ecominsight.cn` 的 A 记录 `@ -> 43.132.124.152`。在 DNS 生效前不启动 Caddy、不申请 TLS、不开放 80/443。公网 A/B 登录还需要用户通过安全方式注入两测试账号密码；不在聊天中传递密码。
-- [ ] S06c 真实 Qwen smoke：当前目标机仅有占位 key，真实 smoke 前需要用户在目标机私有 env 中安全注入可用 Qwen key，并冻结最多 4 个问题、每题最多 3 次调用和绝对累计上限；此前 S01-S06 免费阶段调用增量为 0。
+- [x] 从当前本机 V3 PostgreSQL 生成最终 `s06-current-attempt2`，manifest hash `fa1fb48cdcafbf49a9c1fb7f619a6e3b2f8961fecab0824ba008072aebfb4745`，只含当前 `Ban_qie`/`bobby` 多用户数据；香港生产库为 `v4_restore_prod_0924c`，内部 health/readiness 通过，session=0、active task=0、`local` owner=0。
+- [x] S06b 公网免费验收：DNS 已指向 `43.132.124.152`，Caddy 已签发有效 TLS 证书，HTTP 308 跳转 HTTPS；health/readiness/multiuser 均为 200，5432/6379/5567 均未公开。`Ban_qie`/`bobby` 双账号登录和 workspace 通过，跨用户读/取消/parent 均为 404。生产库计数与 `s06-current-attempt2` 迁移基线相同，模型 dispatch 增量为 0；首次匿名 TLS 超时和后续通过证据分别保留。
+- [ ] S06c 真实 Qwen smoke：用户已授权既定预算。attempt1 只提交一次，planner 的第 1 次 dispatch 约 12.3 秒后 `MODEL_FAILED`；新增 1 条 unknown usage，估算增量为 0 不能解释为实际费用为 0。免费探测确认 Key、DNS/TLS、`qwen-flash` 和 chat route 正常。第一次修复把单次上游 timeout 从 10 秒调整为 15 秒，保留 0 自动重试、每任务最多 3 次和 60 秒总时限，并增加不含秘密的错误类别日志；针对性 10 项和 ecommerce 398 项通过。unknown usage 后尚未授权新 request_id，因此未重试真实模型。

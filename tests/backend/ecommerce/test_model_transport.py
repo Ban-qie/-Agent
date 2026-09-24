@@ -85,6 +85,21 @@ main()
     assert processes[0].poll() == 0
 
 
+def test_worker_failure_logs_only_safe_category(monkeypatch, caplog):
+    script = '''
+from data_formulator.agents.client_utils import Client
+from data_formulator.ecommerce.model_worker import main
+Client._dispatch = lambda *a, **k: (_ for _ in ()).throw(TimeoutError("private provider detail"))
+main()
+'''
+    replace_worker(monkeypatch, script)
+    with pytest.raises(ToolError) as exc:
+        call(30)
+    assert exc.value.code == 'MODEL_FAILED'
+    assert 'category=timeout' in caplog.text
+    assert 'private provider detail' not in caplog.text
+
+
 def test_killed_transport_keeps_parent_reservation(monkeypatch, tmp_path):
     from data_formulator.ecommerce.budget import BudgetClient, UsageLedger
     path = tmp_path / 'usage.json'

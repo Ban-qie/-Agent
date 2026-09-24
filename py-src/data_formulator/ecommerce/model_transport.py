@@ -1,5 +1,6 @@
 """Killable model transport; only the parent owns accounting and deadlines."""
 import json
+import logging
 import subprocess
 import sys
 import time
@@ -10,6 +11,9 @@ from data_formulator.ecommerce.process_limits import constrain_process
 
 MAX_RESPONSE_BYTES = 512 * 1024
 CLEANUP_SECONDS = 2
+ERROR_CATEGORIES = frozenset({'timeout', 'authentication', 'rate_limit',
+                              'connection', 'provider'})
+LOGGER = logging.getLogger(__name__)
 
 
 def dispatch(client, *, messages, stream, params, tools=None):
@@ -41,6 +45,9 @@ def dispatch(client, *, messages, stream, params, tools=None):
             raise ToolError('MODEL_FAILED', 'Model transport did not complete')
         data = json.loads(output)
         if data.get('error'):
+            category = data.get('category')
+            if category in ERROR_CATEGORIES:
+                LOGGER.warning('Qwen model transport failed: category=%s', category)
             raise ToolError('MODEL_FAILED', 'Model transport did not complete')
         from litellm import ModelResponse
         from litellm.types.utils import ModelResponseStream

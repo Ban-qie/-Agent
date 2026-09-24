@@ -49,6 +49,7 @@ def test_real_entry_login_graph_transport_and_replay(tasks, tmp_path, monkeypatc
     def transport(client, *, messages, stream, params):
         assert client.endpoint == 'openai'
         assert params['num_retries'] == params['max_retries'] == 0
+        assert params['timeout'] == 15
         assert params['api_base'] == 'https://dashscope.aliyuncs.com/compatible-mode/v1'
         client.checkpoint()
         calls.append(1)

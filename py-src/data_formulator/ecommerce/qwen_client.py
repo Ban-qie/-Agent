@@ -5,6 +5,9 @@ from data_formulator.agents.client_utils import Client
 from data_formulator.ecommerce.contracts import ToolError
 
 
+UPSTREAM_TIMEOUT_SECONDS = 15
+
+
 class QwenClient(Client):
     deadline = 0
 
@@ -21,7 +24,7 @@ class QwenClient(Client):
         from data_formulator.ecommerce.model_transport import dispatch
         options = {**self.params, **kwargs}
         options.pop('reasoning_effort', None)
-        options.update(max_tokens=768, timeout=min(10, remaining), num_retries=0,
+        options.update(max_tokens=768, timeout=min(UPSTREAM_TIMEOUT_SECONDS, remaining), num_retries=0,
                        max_retries=0, temperature=0, enable_thinking=False)
         return dispatch(self, messages=messages, stream=False, params=options)
 

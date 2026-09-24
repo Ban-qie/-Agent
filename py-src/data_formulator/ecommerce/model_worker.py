@@ -5,6 +5,19 @@ import os
 import sys
 
 
+def error_category(error):
+    name = type(error).__name__.lower()
+    if 'timeout' in name:
+        return 'timeout'
+    if 'auth' in name or 'permission' in name:
+        return 'authentication'
+    if 'rate' in name:
+        return 'rate_limit'
+    if 'connect' in name or 'network' in name:
+        return 'connection'
+    return 'provider'
+
+
 def main():
     wire = sys.stdout
     # Library diagnostics must never contaminate the wire or reveal credentials.
@@ -34,8 +47,11 @@ def main():
             encoded = json.dumps(output)
             if len(encoded.encode()) > MAX_RESPONSE_BYTES:
                 raise ValueError('response limit')
-        except Exception:
-            encoded = '{"error":"MODEL_FAILED"}'
+        except Exception as error:
+            encoded = json.dumps({
+                'error': 'MODEL_FAILED',
+                'category': error_category(error),
+            })
     wire.write(encoded)
 
 
