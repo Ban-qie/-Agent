@@ -21,9 +21,9 @@ COPY pyproject.toml MANIFEST.in README.md LICENSE THIRD_PARTY_NOTICES.md uv.lock
 COPY deploy/ecommerce/requirements.production.lock ./requirements.production.lock
 COPY py-src ./py-src
 COPY --from=frontend /build/py-src/data_formulator/dist ./py-src/data_formulator/dist
-RUN python -m pip wheel --no-cache-dir --require-hashes --wheel-dir /wheels \
+RUN python -m pip wheel --no-cache-dir --timeout 300 --retries 5 --require-hashes --wheel-dir /wheels \
       --requirement requirements.production.lock \
-    && python -m pip wheel --no-cache-dir --no-deps --wheel-dir /wheels . gunicorn==23.0.0
+    && python -m pip wheel --no-cache-dir --timeout 300 --retries 5 --no-deps --wheel-dir /wheels . gunicorn==23.0.0
 
 FROM python:3.11-slim-bookworm@sha256:a36c24f9cbdf4fd0f52d67f0823eeac19c2028c637cecc392d97f980d4fec56b AS runtime
 
