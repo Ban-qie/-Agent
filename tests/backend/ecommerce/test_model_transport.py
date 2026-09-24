@@ -100,6 +100,58 @@ main()
     assert 'private provider detail' not in caplog.text
 
 
+@pytest.mark.parametrize(('error_source', 'expected'), [
+    ('type("BadRequestError", (Exception,), {"status_code": 400})',
+     'category=bad_request status=400'),
+    ('type("AuthenticationError", (Exception,), {"status_code": 401})',
+     'category=authentication status=401'),
+    ('type("PermissionDeniedError", (Exception,), {"status_code": 403})',
+     'category=permission status=403'),
+    ('type("RateLimitError", (Exception,), {"status_code": 429})',
+     'category=rate_limit status=429'),
+    ('type("BudgetExceededError", (Exception,), {"status_code": 429, "rate_limit_type": "budget"})',
+     'category=quota status=429'),
+    ('type("ServiceUnavailableError", (Exception,), {"status_code": 503})',
+     'category=server status=503'),
+    ('type("APIConnectionError", (Exception,), {})', 'category=connection'),
+    ('type("APIResponseValidationError", (Exception,), {"status_code": 500})',
+     'category=response_parse status=500'),
+])
+def test_worker_failure_logs_safe_diagnostic_bucket(monkeypatch, caplog,
+                                                    error_source, expected):
+    script = f'''
+from data_formulator.agents.client_utils import Client
+from data_formulator.ecommerce.model_worker import main
+Error = {error_source}
+Client._dispatch = lambda *a, **k: (_ for _ in ()).throw(Error("private provider detail"))
+main()
+'''
+    replace_worker(monkeypatch, script)
+    with pytest.raises(ToolError):
+        call(30)
+    assert expected in caplog.text
+    assert 'private provider detail' not in caplog.text
+
+
+def test_worker_logs_only_allowlisted_provider_code(monkeypatch, caplog):
+    script = '''
+from data_formulator.agents.client_utils import Client
+from data_formulator.ecommerce.model_worker import main
+class Error(Exception):
+    status_code = 429
+    code = "QuotaExceeded"
+    body = {"error": {"code": "secret-account-identifier"}}
+Client._dispatch = lambda *a, **k: (_ for _ in ()).throw(Error("private provider detail"))
+main()
+'''
+    replace_worker(monkeypatch, script)
+    with pytest.raises(ToolError):
+        call(30)
+    assert 'category=quota status=429 provider_code=QuotaExceeded' in caplog.text
+    assert 'secret-account-identifier' not in caplog.text
+    assert 'private provider detail' not in caplog.text
+
+
 def test_killed_transport_keeps_parent_reservation(monkeypatch, tmp_path):
     from data_formulator.ecommerce.budget import BudgetClient, UsageLedger
     path = tmp_path / 'usage.json'

@@ -5,17 +5,73 @@ import os
 import sys
 
 
-def error_category(error):
+SAFE_PROVIDER_CODES = frozenset({
+    'Arrearage',
+    'InvalidApiKey',
+    'InvalidParameter',
+    'ModelNotFound',
+    'PermissionDenied',
+    'QuotaExceeded',
+    'RateLimitExceeded',
+    'Throttling',
+    'UnsupportedOperation',
+})
+
+
+def _safe_status(error):
+    status = getattr(error, 'status_code', None)
+    if not isinstance(status, int):
+        response = getattr(error, 'response', None)
+        status = getattr(response, 'status_code', None)
+    return status if isinstance(status, int) and 400 <= status <= 599 else None
+
+
+def _safe_provider_code(error):
+    candidates = [getattr(error, 'code', None)]
+    body = getattr(error, 'body', None)
+    if isinstance(body, dict):
+        candidates.append(body.get('code'))
+        nested = body.get('error')
+        if isinstance(nested, dict):
+            candidates.append(nested.get('code'))
+    for value in candidates:
+        if isinstance(value, str) and value in SAFE_PROVIDER_CODES:
+            return value
+    return None
+
+
+def error_diagnostic(error):
     name = type(error).__name__.lower()
+    status = _safe_status(error)
+    code = _safe_provider_code(error)
+    rate_type = getattr(error, 'rate_limit_type', None)
     if 'timeout' in name:
-        return 'timeout'
-    if 'auth' in name or 'permission' in name:
-        return 'authentication'
-    if 'rate' in name:
-        return 'rate_limit'
-    if 'connect' in name or 'network' in name:
-        return 'connection'
-    return 'provider'
+        category = 'timeout'
+    elif 'responsevalidation' in name or 'jsonschema' in name or 'decode' in name:
+        category = 'response_parse'
+    elif 'auth' in name or status == 401 or code == 'InvalidApiKey':
+        category = 'authentication'
+    elif 'permission' in name or status == 403 or code == 'PermissionDenied':
+        category = 'permission'
+    elif (rate_type == 'budget' or code in {'Arrearage', 'QuotaExceeded'}
+          or 'budget' in name or 'quota' in name):
+        category = 'quota'
+    elif 'rate' in name or status == 429 or code in {'RateLimitExceeded', 'Throttling'}:
+        category = 'rate_limit'
+    elif 'connect' in name or 'network' in name:
+        category = 'connection'
+    elif status is not None and status >= 500:
+        category = 'server'
+    elif 'badrequest' in name or 'unprocessable' in name or status in {400, 404, 409, 422}:
+        category = 'bad_request'
+    else:
+        category = 'provider'
+    diagnostic = {'category': category}
+    if status is not None:
+        diagnostic['status'] = status
+    if code is not None:
+        diagnostic['provider_code'] = code
+    return diagnostic
 
 
 def main():
@@ -48,10 +104,7 @@ def main():
             if len(encoded.encode()) > MAX_RESPONSE_BYTES:
                 raise ValueError('response limit')
         except Exception as error:
-            encoded = json.dumps({
-                'error': 'MODEL_FAILED',
-                'category': error_category(error),
-            })
+            encoded = json.dumps({'error': 'MODEL_FAILED', **error_diagnostic(error)})
     wire.write(encoded)
 
 

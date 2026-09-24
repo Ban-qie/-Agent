@@ -427,3 +427,9 @@ docs/specs/V3-local-run.md
 - [x] 从当前本机 V3 PostgreSQL 生成最终 `s06-current-attempt2`，manifest hash `fa1fb48cdcafbf49a9c1fb7f619a6e3b2f8961fecab0824ba008072aebfb4745`，只含当前 `Ban_qie`/`bobby` 多用户数据；香港生产库为 `v4_restore_prod_0924c`，内部 health/readiness 通过，session=0、active task=0、`local` owner=0。
 - [x] S06b 公网免费验收：DNS 已指向 `43.132.124.152`，Caddy 已签发有效 TLS 证书，HTTP 308 跳转 HTTPS；health/readiness/multiuser 均为 200，5432/6379/5567 均未公开。`Ban_qie`/`bobby` 双账号登录和 workspace 通过，跨用户读/取消/parent 均为 404。生产库计数与 `s06-current-attempt2` 迁移基线相同，模型 dispatch 增量为 0；首次匿名 TLS 超时和后续通过证据分别保留。
 - [ ] S06c 真实 Qwen smoke：用户已授权既定预算。attempt1 只提交一次，planner 的第 1 次 dispatch 约 12.3 秒后 `MODEL_FAILED`；新增 1 条 unknown usage，估算增量为 0 不能解释为实际费用为 0。免费探测确认 Key、DNS/TLS、`qwen-flash` 和 chat route 正常。第一次修复把单次上游 timeout 从 10 秒调整为 15 秒，保留 0 自动重试、每任务最多 3 次和 60 秒总时限，并增加不含秘密的错误类别日志；针对性 10 项和 ecommerce 398 项通过。unknown usage 后尚未授权新 request_id，因此未重试真实模型。
+
+### 2026-09-25 S06c Attempt2 与第二诊断补丁
+
+Attempt2 使用固定 request ID `v4-s06c-smoke-20260925-02` 和用户授权的新增费用上限 0.10 元，只提交一次。请求 HTTP 202，任务 `6082ad92e8af4f81973a33d35dc24d9f` 在 planner 阶段经过 1 次模型 dispatch 后失败，自动重试为 0；生产日志类别为 `provider`，没有记录供应商正文或凭据。该 attempt 新增第 2 条 V4 unknown usage：预留 20000000 units、estimated 0、settlement unknown；不能解释为实际费用为 0。生产 `website_usage` 当前共 5 条，旧调试账目 SHA-256 保持不变。
+
+现有 `provider` 桶不足以判断 HTTP 拒绝、权限/配额、服务端异常或响应解析。第二个有依据的补丁只扩展安全诊断分类和离线测试，不改变请求参数、预算、自动重试或业务结果。诊断测试 17 项通过；使用离线 LiteLLM 价格表和受限电商 profile 的完整 ecommerce 回归 407 项通过。Attempt3 未获授权且不得自动执行；第二补丁部署后只能做免费验证。证据见 `docs/verification/V4-S06/s06c-smoke-attempt2.json`、`s06c-fix2-validation-attempt1.json` 与 `handoff.md`。

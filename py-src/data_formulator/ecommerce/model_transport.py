@@ -11,8 +11,13 @@ from data_formulator.ecommerce.process_limits import constrain_process
 
 MAX_RESPONSE_BYTES = 512 * 1024
 CLEANUP_SECONDS = 2
-ERROR_CATEGORIES = frozenset({'timeout', 'authentication', 'rate_limit',
-                              'connection', 'provider'})
+ERROR_CATEGORIES = frozenset({'bad_request', 'authentication', 'permission',
+                              'rate_limit', 'quota', 'server', 'connection',
+                              'timeout', 'response_parse', 'provider'})
+SAFE_PROVIDER_CODES = frozenset({'Arrearage', 'InvalidApiKey', 'InvalidParameter',
+                                 'ModelNotFound', 'PermissionDenied',
+                                 'QuotaExceeded', 'RateLimitExceeded',
+                                 'Throttling', 'UnsupportedOperation'})
 LOGGER = logging.getLogger(__name__)
 
 
@@ -47,7 +52,17 @@ def dispatch(client, *, messages, stream, params, tools=None):
         if data.get('error'):
             category = data.get('category')
             if category in ERROR_CATEGORIES:
-                LOGGER.warning('Qwen model transport failed: category=%s', category)
+                fields = ['category=%s']
+                values = [category]
+                status = data.get('status')
+                if isinstance(status, int) and 400 <= status <= 599:
+                    fields.append('status=%s')
+                    values.append(status)
+                provider_code = data.get('provider_code')
+                if provider_code in SAFE_PROVIDER_CODES:
+                    fields.append('provider_code=%s')
+                    values.append(provider_code)
+                LOGGER.warning('Qwen model transport failed: ' + ' '.join(fields), *values)
             raise ToolError('MODEL_FAILED', 'Model transport did not complete')
         from litellm import ModelResponse
         from litellm.types.utils import ModelResponseStream
