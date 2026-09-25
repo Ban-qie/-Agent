@@ -1,0 +1,86 @@
+{
+  "stage": "V4-S07",
+  "substep": "evidence-index",
+  "attempt": 1,
+  "status": "passed",
+  "date": "2026-09-25",
+  "start_commit": "df8cc79044f769f6ffc7372e69640efa6108a3be",
+  "stage_directories": {
+    "V2": {
+      "count": 6,
+      "all_present": true,
+      "all_handoffs_present": true,
+      "files_per_stage": [2, 7, 7, 33, 41, 5]
+    },
+    "V3": {
+      "count": 9,
+      "all_present": true,
+      "all_handoffs_present": true,
+      "files_per_stage": [7, 13, 5, 9, 9, 9, 7, 13, 67]
+    },
+    "V4_S01_to_S06": {
+      "count": 6,
+      "all_present": true,
+      "all_handoffs_present": true,
+      "files_per_stage": [83, 10, 8, 105, 15, 67]
+    }
+  },
+  "validation_summaries": {
+    "V2": {
+      "path": "docs/validation/V2-core-summary.json",
+      "sha256": "c3d929ce82fe1093220047f6f1cf7df6ead284d4eec5291f3cbe6bbcd8829ca2"
+    },
+    "V3": {
+      "path": "docs/validation/V3-multiuser-summary.json",
+      "sha256": "a0f465e61e519906dbb002e662989d2d70b0ab4ac4544964167ce7d6c8b437b5"
+    }
+  },
+  "release_tags_preserved": {
+    "v0.2.1-v1-closure": "a7b53dfdb0e88eb4a12f40a2ea857d0d26a0825a",
+    "v0.3.0-v2-core": "d0a67d11309c8f04f134c6efb3620d89deecf338",
+    "v0.4.0-v3-multiuser": "3e6d6044dfa64d8679d62d4ed2551d91ff80b5f9"
+  },
+  "cost_preservation": {
+    "legacy_ledger_sha256": "0fcdda9608e24c7397414f4bd493f5bde13b6b1b173414f7984214d0482fa0fc",
+    "production_website_usage_rows": 12,
+    "production_estimated_units": 1218450,
+    "production_unknown_usage_rows": 3,
+    "production_unsettled_rows": 0,
+    "unknown_usage_preserved": true,
+    "provider_final_bill_queried": false
+  },
+  "replay_protection": {
+    "attempt6_marker": ".local/v4-public-qwen-smoke-attempt6.submitted",
+    "sha256": "736287a8e23b0bcfa360fb5a20277b9c28a7c399cb926bc4baf51522236247a7",
+    "preserved": true
+  },
+  "private_backups_preserved": [
+    {
+      "path": ".local/v4-s06c-medium-predeploy-attempt2.dump",
+      "bytes": 31527
+    },
+    {
+      "path": ".local/v4-s06c-wording-predeploy-attempt1.dump",
+      "bytes": 32099
+    },
+    {
+      "path": ".local/v4-s06d-restart-rollback-attempt1.dump",
+      "bytes": 32915,
+      "sha256": "211553ff622fc57150a91d31549c1e28fff738293ecb3d1eecfba6f2e08e89b9"
+    }
+  ],
+  "failure_evidence": {
+    "preserved": true,
+    "examples": [
+      "docs/verification/V2-S05",
+      "docs/verification/V4-S01",
+      "docs/verification/V4-S03/restore-rehearsal-attempt1.json",
+      "docs/verification/V4-S04/multi-instance-slot-attempt1.json",
+      "docs/verification/V4-S06/s06c-smoke-attempt1.json",
+      "docs/verification/V4-S06/s06c-catalog-deploy-attempt1-failed.json"
+    ]
+  },
+  "destructive_commands_used": false,
+  "real_model_requests": 0,
+  "cost_increment_cny": "0.00000000"
+}

@@ -1,0 +1,64 @@
+{
+  "stage": "V4-S06d",
+  "attempt": 1,
+  "status": "passed",
+  "date": "2026-09-25",
+  "target": "Tencent Cloud Hong Kong production",
+  "public_origin": "https://ecominsight.cn",
+  "source_commit": "df8cc79044f769f6ffc7372e69640efa6108a3be",
+  "current_image": "sha256:b29cd6ccb4793a66924b9340d7dcc81f4fde4e1ac97d7a03fec8ac8c91b24632",
+  "rollback_image": "sha256:ac2343ece33408df76ee7727c72f0deb3d22aa98ccfdc89519915794ef30f1d3",
+  "restart": {
+    "recovery_seconds": 7.77,
+    "health": "passed",
+    "readiness": "passed",
+    "automatic_replays": 0
+  },
+  "rollback": {
+    "recovery_seconds": 6.79,
+    "old_image_health": "passed",
+    "old_image_readiness": "passed",
+    "persistent_state_unchanged": true
+  },
+  "rollforward": {
+    "recovery_seconds": 8.82,
+    "final_health": "passed",
+    "final_readiness": "passed",
+    "final_image_matches_release": true
+  },
+  "persistence": {
+    "postgres_container_unchanged": true,
+    "redis_container_unchanged": true,
+    "caddy_container_unchanged": true,
+    "table_fingerprints_checked": 9,
+    "table_fingerprints_unchanged": true,
+    "active_tasks": 0,
+    "usage_rows": 12,
+    "estimated_usage_units": 1218450,
+    "unknown_usage_rows": 3,
+    "unsettled_usage_rows": 0,
+    "legacy_ledger_sha256": "0fcdda9608e24c7397414f4bd493f5bde13b6b1b173414f7984214d0482fa0fc"
+  },
+  "authorization": {
+    "owner_can_read_attempt6_task": true,
+    "owner_can_read_attempt6_node": true,
+    "foreign_task_read": "NOT_FOUND",
+    "foreign_node_read": "NOT_FOUND"
+  },
+  "backup": {
+    "format": "PostgreSQL custom dump",
+    "bytes": 32915,
+    "sha256": "211553ff622fc57150a91d31549c1e28fff738293ecb3d1eecfba6f2e08e89b9",
+    "toc_checked": true,
+    "private_copy": ".local/v4-s06d-restart-rollback-attempt1.dump"
+  },
+  "cost": {
+    "real_model_requests": 0,
+    "increment_cny": "0.00000000"
+  },
+  "private_evidence": {
+    "path": ".local/v4-s06d-restart-rollback-attempt1.json",
+    "sha256": "8893d72e98cdd7cc0b17ada736278cf3b7913c2d35089971d158cb018768dd80"
+  },
+  "secrets_recorded": false
+}

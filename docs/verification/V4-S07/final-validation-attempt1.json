@@ -1,0 +1,47 @@
+{
+  "stage": "V4-S07",
+  "attempt": 1,
+  "status": "passed",
+  "date": "2026-09-25",
+  "application_source_commit": "6bb52720fa05b771eeda98a0b8014fc707267b19",
+  "production_image": "sha256:9db574eb3bd69b82f2587c83471257dda02b7d51fe4295a7a7f046c149f1dd2a",
+  "checks": {
+    "backend": {
+      "passed": 425,
+      "failed": 0,
+      "warnings": 26,
+      "seconds": 302.92,
+      "attempt": 2,
+      "junit_sha256": "09cd88eac76a917f393143b58fcc789af9128efecd7df1fbdb79644edf54c794"
+    },
+    "typescript": {
+      "exit_code": 0,
+      "attempt": 1
+    },
+    "frontend_build": {
+      "exit_code": 0,
+      "modules_transformed": 2688,
+      "seconds": 59.26,
+      "attempt": 1,
+      "log_sha256": "660e59fc01cb3dec675774943a185b83951cee90adcc21ac52eb3ee23bbe751a"
+    },
+    "deployment_config": {
+      "compose_exit": 0,
+      "caddy_exit": 0,
+      "gunicorn_compile_exit": 0,
+      "attempt": 2,
+      "evidence_sha256": "89dbcbe78444328d037208775feed5011d5784b6ac7d9083b9ae4be07152c271"
+    },
+    "public_health": "ok",
+    "public_readiness": "ready",
+    "recovery_and_fault_tests_in_backend_suite": true,
+    "production_slot_fix_deployed": true
+  },
+  "retained_failure": {
+    "backend_attempt1": "1 failed, 424 passed",
+    "sha256": "531ce4b08cf40f45bc008b42c1c1a389a0d74bd996423c70f9753ba1f36dfdb0"
+  },
+  "dependencies_reinstalled": false,
+  "real_model_requests": 0,
+  "cost_increment_cny": "0.00000000"
+}

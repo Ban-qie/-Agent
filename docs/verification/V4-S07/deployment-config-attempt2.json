@@ -1,0 +1,16 @@
+﻿{
+    "status":  "passed",
+    "compose_exit":  0,
+    "caddy_exit":  0,
+    "gunicorn_compile_exit":  0,
+    "placeholder_secrets_used":  true,
+    "public_health":  "ok",
+    "public_readiness":  "ready",
+    "readiness_checks":  {
+                             "config":  true,
+                             "database":  true,
+                             "ledger":  true,
+                             "snapshot":  true
+                         },
+    "real_model_requests":  0
+}

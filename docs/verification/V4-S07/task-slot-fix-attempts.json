@@ -1,0 +1,33 @@
+{
+  "stage": "V4-S07",
+  "issue": "terminal task could remain visible before the in-process execution slot was released",
+  "initial_reproduction": {
+    "evidence": "backend-pytest-attempt1.log",
+    "result": "1 failed, 424 passed",
+    "failure": "test_worker_base_exception_becomes_terminal_and_releases_slot returned BUSY immediately after failed became visible"
+  },
+  "repair_1": {
+    "change": "release the semaphore immediately before starting the terminal store transaction",
+    "result": "failed",
+    "evidence": [
+      "task-slot-fix-attempt1.log",
+      "task-slot-fix-attempt2.log",
+      "task-slot-fix-attempt3.log",
+      "task-slot-diagnosis-attempt1.log"
+    ],
+    "diagnosis": "SQLite BEGIN IMMEDIATE status polling could starve the terminal write after the slot was released outside the transaction; a separate cold-import failure and Windows faulthandler crash were retained as environment evidence"
+  },
+  "repair_2": {
+    "change": "release the local semaphore through a before_commit callback while the terminal transaction still holds its database lock",
+    "result": "passed",
+    "targeted": "11 passed, 1 warning",
+    "targeted_evidence": "task-slot-fix2-attempt1.log",
+    "full_regression": "425 passed, 0 failed, 26 existing warnings",
+    "full_evidence": "backend-pytest-attempt2.log",
+    "commit": "6bb52720fa05b771eeda98a0b8014fc707267b19"
+  },
+  "assertions_relaxed": false,
+  "third_code_repair_attempted": false,
+  "real_model_requests": 0,
+  "cost_increment_cny": "0.00000000"
+}

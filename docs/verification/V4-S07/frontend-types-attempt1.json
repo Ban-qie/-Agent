@@ -1,0 +1,10 @@
+{
+  "stage": "V4-S07",
+  "check": "TypeScript noEmit",
+  "attempt": 1,
+  "status": "passed",
+  "command": "node_modules/.bin/tsc.cmd --noEmit",
+  "exit_code": 0,
+  "stdout_bytes": 0,
+  "dependencies_installed": false
+}

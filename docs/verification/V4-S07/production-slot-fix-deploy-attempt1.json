@@ -1,0 +1,69 @@
+{
+  "stage": "V4-S07",
+  "attempt": 1,
+  "status": "passed_free_validation",
+  "date": "2026-09-25",
+  "target": "Tencent Cloud Hong Kong production",
+  "public_origin": "https://ecominsight.cn",
+  "source_commit": "6bb52720fa05b771eeda98a0b8014fc707267b19",
+  "previous_image": "sha256:b29cd6ccb4793a66924b9340d7dcc81f4fde4e1ac97d7a03fec8ac8c91b24632",
+  "deployed_image": "sha256:9db574eb3bd69b82f2587c83471257dda02b7d51fe4295a7a7f046c149f1dd2a",
+  "maintenance_seconds": 8.9,
+  "offline_probe": {
+    "network": "none",
+    "failed_task_terminal": true,
+    "next_submit_accepted": true,
+    "real_model_requests": 0
+  },
+  "production": {
+    "health": "ok",
+    "readiness": "ready",
+    "readiness_checks": {
+      "config": true,
+      "database": true,
+      "ledger": true,
+      "snapshot": true
+    },
+    "all_containers_healthy": true,
+    "all_restart_counts": 0,
+    "postgres_container_unchanged": true,
+    "redis_container_unchanged": true,
+    "caddy_container_unchanged": true,
+    "active_tasks": 0
+  },
+  "durability": {
+    "table_fingerprints_checked": 9,
+    "all_table_fingerprints_unchanged": true,
+    "usage_rows": 12,
+    "estimated_usage_units": 1218450,
+    "unknown_usage_rows": 3,
+    "unsettled_usage_rows": 0,
+    "legacy_ledger_sha256": "0fcdda9608e24c7397414f4bd493f5bde13b6b1b173414f7984214d0482fa0fc",
+    "owner_attempt6_access_preserved": true,
+    "foreign_task_read": "NOT_FOUND",
+    "foreign_node_read": "NOT_FOUND"
+  },
+  "source_sha256": {
+    "task_service.py": "f11185849ef8b697da82eb3ebeb63569cc1b966eaf6b89f873a59ac2e3f8f5d1",
+    "task_store.py": "7b0f17e262d4a2428dd69e00129433c95bd03f42eaf4a83c8ef74319f2f452e1"
+  },
+  "backup": {
+    "format": "PostgreSQL custom dump",
+    "bytes": 32915,
+    "sha256": "928c34966c16a730456c2a896e712dbac1a9bef73ef59928fd757cb66c6722ca",
+    "toc_checked": true,
+    "off_instance_copy": ".local/v4-s07-slot-predeploy-attempt1.dump"
+  },
+  "rollback": {
+    "image": "sha256:b29cd6ccb4793a66924b9340d7dcc81f4fde4e1ac97d7a03fec8ac8c91b24632",
+    "tag": "ecominsight:v4-rollback-s07-slot-fix1-predeploy",
+    "retained": true
+  },
+  "private_result": {
+    "path": ".local/v4-s07-slot-deploy-result-attempt1.json",
+    "sha256": "22a7dbb3be57cc1dc07f49f8a7bde224270230b8ec11e96d6ac729d9b25002cd"
+  },
+  "real_model_requests": 0,
+  "cost_increment_cny": "0.00000000",
+  "secrets_recorded": false
+}
