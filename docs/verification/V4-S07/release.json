@@ -1,0 +1,38 @@
+{
+  "stage": "V4",
+  "status": "passed-production",
+  "date": "2026-09-25",
+  "application_source_commit": "6bb52720fa05b771eeda98a0b8014fc707267b19",
+  "release_content_commit": "b6a0b243e40f690bc4c5f29fe09e849a55d0284d",
+  "fixed_ref": "refs/tags/v0.5.0-v4-production",
+  "production_origin": "https://ecominsight.cn",
+  "production_image": "sha256:9db574eb3bd69b82f2587c83471257dda02b7d51fe4295a7a7f046c149f1dd2a",
+  "release_archive_sha256": "c9b31ce8c25000b32fcba56d0d7597095130ab3fe740595979f4cc5c1d31e3d3",
+  "release_manifest_sha256": "6603a1643a500919e0ea85accd00f11ed37a297b11d459e24826cb11b46f9b97",
+  "summary": {
+    "path": "docs/validation/V4-release-summary.json",
+    "sha256": "3b0575ef3bcb12d68519ad662d7a55e08e0b387a001962ea8909fe09699feb19"
+  },
+  "tests": {
+    "backend_passed": 425,
+    "backend_failed": 0,
+    "typescript_exit": 0,
+    "frontend_build_exit": 0,
+    "deployment_config_exit": 0,
+    "public_health": "ok",
+    "public_readiness": "ready"
+  },
+  "accounting": {
+    "production_usage_rows": 12,
+    "production_estimated_units": 1218450,
+    "production_unknown_rows": 3,
+    "historical_unknown_rows": 2,
+    "legacy_ledger_sha256": "0fcdda9608e24c7397414f4bd493f5bde13b6b1b173414f7984214d0482fa0fc",
+    "provider_invoice_checked": false
+  },
+  "publication": "local commit and tag only; no remote push",
+  "second_target_deployed": false,
+  "notifications_sent": false,
+  "v5_started": false,
+  "stop_after": "V4-S07"
+}

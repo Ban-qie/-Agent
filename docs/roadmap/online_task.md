@@ -488,3 +488,14 @@ Attempt2 使用固定 request ID `v4-s06c-smoke-20260925-02` 和用户授权的�
 - [ ] 新真实Attempt5提案：保持原题，仅提交1次，最多3内部调用、重试0、新增上限0.10元、累计上限10元。`s06c-budget-proposal-attempt5.json` 尚未授权，禁止复用Attempt4授权或ID。
 
 证据入口：`docs/verification/V4-S06/s06c-wording-validation-attempt1.json`、`s06c-wording-deploy-attempt1.json`；公网记录 `.local/v4-s06c-wording-public-check-attempt1.json`。S06c仍等待真实原题与数值/账目验收，不能因fixture成功进入S06d/S07。
+
+### 2026-09-25 V4 最终上线与收口（当前有效）
+
+- [x] Attempt6 经用户单独授权后只提交一次，HTTP 202；任务 `07bc9e9fed37497a88aff6a8d47b8e97` 成功，3 次内部 dispatch、自动重试 0。2018-02 与 2018-01 的订单数、销售额、客单价及变化量全部匹配独立参考。
+- [x] 生产账目现为 12 条 website usage、1218450 估算 units、3 条生产 unknown、0 unsettled；历史归档的 247 次、已知估算 0.04992810 元、预留 4.89 元、2 条 unknown 和旧 hash 全部保留。供应商最终账单未单独查询。
+- [x] S06d 实际完成应用重启、回滚到旧镜像和再滚回：自动模型重放 0，9 张表、对象归属、账目和 unknown 守恒，第二账号读取 Attempt6 task/node 均为 `NOT_FOUND`。
+- [x] S07 完整后端 attempt1 暴露“终态可见但本机槽尚未释放”的竞态，424 passed / 1 failed。第一次修复未通过并保留日志；第二次修复在终态事务提交前回调释放槽，定向 11 项及完整 425 项通过，未放宽断言。
+- [x] 修复提交 `6bb52720fa05b771eeda98a0b8014fc707267b19` 已免费部署为镜像 `sha256:9db574eb3bd69b82f2587c83471257dda02b7d51fe4295a7a7f046c149f1dd2a`。维护 8.9 秒，真实 Qwen 0、费用增量 0；部署前后 9 表和账目完全一致，PostgreSQL/Redis/Caddy 未重建。
+- [x] 最终后端 425 项、TypeScript、前端构建、Compose、Caddy、Gunicorn、公网 health/readiness 全部通过。发布归档 SHA-256 为 `c9b31ce8c25000b32fcba56d0d7597095130ab3fe740595979f4cc5c1d31e3d3`。
+- [x] `docs/validation/V4-release-summary.json`、运行/故障/预算/恢复指南、S07 handoff 和本地 release receipt 已生成。
+- [x] V4 完成后停止。未推送远端、未发送通知、未部署第二目标、未进入 V5；V5 只有用户明确选择一个模块后才能开始。
