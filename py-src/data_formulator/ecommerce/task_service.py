@@ -80,6 +80,14 @@ class TaskService:
 
     def _run(self, task_id):
         task = None
+        slot_released = False
+
+        def release_slot():
+            nonlocal slot_released
+            if not slot_released:
+                self.slots.release()
+                slot_released = True
+
         try:
             task = self.store.claim(task_id)
             principal = Principal(task['owner'])
@@ -89,18 +97,19 @@ class TaskService:
                                     self.budget, task, self.store)
             result = self.business.analyze(principal, json.loads(task['body']), workspace_override=workspace,
                                            client_override=client, checkpoint=client.checkpoint)
-            self.store.finish_if_owner_version(task, result, workspace.pending_node)
+            self.store.finish_if_owner_version(
+                task, result, workspace.pending_node, before_commit=release_slot)
         except BaseException as error:
             if task:
                 try:
                     self.store.finish_if_owner_version(task, {'state': 'failed', 'error': {
                         'code': error.code if isinstance(error, ToolError) else 'TASK_FAILED',
-                        'message': 'Task could not complete'}})
+                        'message': 'Task could not complete'}}, before_commit=release_slot)
                 except Exception:
                     # Durable running lease becomes interrupted, never re-executed.
                     pass
         finally:
-            self.slots.release()
+            release_slot()
 
     def get(self, principal, task_id):
         return self.store.get_authorized(principal.owner, WORKSPACE, task_id)

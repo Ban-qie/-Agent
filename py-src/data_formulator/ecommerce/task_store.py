@@ -110,7 +110,7 @@ class TaskStore(WorkspaceRepository):
             raise ToolError('INTERRUPTED', 'Task stopped or lease expired')
         return current
 
-    def finish_if_owner_version(self, task, response, node=None):
+    def finish_if_owner_version(self, task, response, node=None, before_commit=None):
         target, now = terminal_status(response), self.clock()
         with self.transaction() as db:
             row = db.execute('SELECT * FROM tasks WHERE id=?', (task['id'],)).fetchone()
@@ -128,6 +128,8 @@ class TaskStore(WorkspaceRepository):
                                 len(payload.encode()), version)
             db.execute('UPDATE tasks SET status=?,response=?,version=version+1,updated=? WHERE id=?',
                        (target, pack(response), now, task['id']))
+            if before_commit:
+                before_commit()
         return self.get_authorized(task['owner'], task['workspace'], task['id'])
 
     def request_cancel(self, owner, workspace, task_id):
