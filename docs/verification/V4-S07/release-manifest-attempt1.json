@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "source_commit": "6bb52720fa05b771eeda98a0b8014fc707267b19",
+  "archive": "C:\\Users\\Kobe Bryant\\Agent Project\\.local\\v4-release\\ecominsight-v4-6bb52720fa05.tar.gz",
+  "archive_bytes": 15553077,
+  "archive_sha256": "c9b31ce8c25000b32fcba56d0d7597095130ab3fe740595979f4cc5c1d31e3d3",
+  "release_root": "ecominsight-v4-6bb52720fa05",
+  "file_count": 450,
+  "manifest_sha256": "6603a1643a500919e0ea85accd00f11ed37a297b11d459e24826cb11b46f9b97",
+  "model_calls": 0
+}
